@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Replace any non-empty <item> elements with empty ones or resource references -->
+    <item name="fragment_container_view_tag" type="id" />
+    <!-- Add other id resources as needed -->
+</resources>

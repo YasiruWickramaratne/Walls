@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/categories"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"/>
+
+    <CheckBox
+        android:id="@+id/cb_select_all_categories"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="@string/select_all_categories" />
+
+    <CheckBox
+        android:id="@+id/cb_general"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="@string/general" />
+
+    <CheckBox
+        android:id="@+id/cb_anime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="@string/anime" />
+
+    <CheckBox
+        android:id="@+id/cb_people"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="@string/people" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@android:color/darker_gray"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/purity"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"/>
+
+    <CheckBox
+        android:id="@+id/cb_select_all_purity"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="@string/select_all_purity_levels" />
+
+    <CheckBox
+        android:id="@+id/cb_sfw"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="@string/sfw" />
+
+    <CheckBox
+        android:id="@+id/cb_sketchy"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="@string/sketchy" />
+
+    <CheckBox
+        android:id="@+id/cb_nsfw"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="@string/nsfw" />
+
+</LinearLayout>

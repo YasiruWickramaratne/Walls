@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Walls</string>
+    <!-- Add these new strings -->
+    <string name="select_all_purity_levels">Select All Purity Levels</string>
+    <string name="sfw">SFW</string>
+    <string name="sketchy">Sketchy</string>
+    <string name="nsfw">NSFW</string>
+    <string name="select_all_categories">Select All Categories</string>
+    <string name="general">General</string>
+    <string name="anime">Anime</string>
+    <string name="people">People</string>
+    <string name="categories">Categories</string>
+    <string name="purity">Purity</string>
+    <string name="filter">Filter</string>
+    <string name="wallpaper_image_description">Image Description</string>
+</resources>
