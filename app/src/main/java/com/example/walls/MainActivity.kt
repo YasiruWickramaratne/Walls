@@ -1,8 +1,13 @@
 package com.example.walls
 
 import FilterDialog
+import WallpaperViewModelFactory
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.MenuItem
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -11,20 +16,44 @@ import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
+import androidx.appcompat.app.ActionBarDrawerToggle
+import androidx.core.view.GravityCompat
+import androidx.drawerlayout.widget.DrawerLayout
+import com.google.android.material.navigation.NavigationView
+import androidx.appcompat.widget.Toolbar
 
-
-class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener {
+class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener, NavigationView.OnNavigationItemSelectedListener {
     private lateinit var viewPager: ViewPager2
     private lateinit var tabLayout: TabLayout
     private lateinit var viewModel: WallpaperViewModel
+    private lateinit var drawerLayout: DrawerLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         Log.d("MainActivity", "onCreate called")
 
-        viewModel = ViewModelProvider(this, WallpaperViewModel.Factory(applicationContext))
+        // Set up the toolbar
+        val toolbar: Toolbar = findViewById(R.id.toolbar)
+        setSupportActionBar(toolbar)
+
+        // Set up the navigation drawer
+        drawerLayout = findViewById(R.id.drawer_layout)
+        val navigationView: NavigationView = findViewById(R.id.nav_view)
+        navigationView.setNavigationItemSelectedListener(this)
+
+        val toggle = ActionBarDrawerToggle(
+            this, drawerLayout, toolbar,
+            R.string.open_drawer, R.string.close_drawer
+        )
+        drawerLayout.addDrawerListener(toggle)
+        toggle.syncState()
+
+        viewModel = ViewModelProvider(this, WallpaperViewModelFactory(applicationContext))
             .get(WallpaperViewModel::class.java)
+
+
+
         observeFilterChanges()
 
         // Set up ViewPager and TabLayout
@@ -60,8 +89,48 @@ class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener {
                 super.onPageSelected(position)
             }
         })
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
     }
 
+
+    override fun onNavigationItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.nav_home -> {
+                // Handle home action
+            }
+            R.id.nav_favorites -> {
+                // Handle favorites action
+            }
+            R.id.nav_settings -> {
+                val intent = Intent(this, SettingsActivity::class.java)
+                startActivity(intent)
+            }
+        }
+        drawerLayout.closeDrawer(GravityCompat.START)
+        return true
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val sharedPreferences = getSharedPreferences("WallsPrefs", Context.MODE_PRIVATE)
+        val apiKey = sharedPreferences.getString("API_KEY", null)
+        Log.d("MainActivity", "Current API key: $apiKey")
+        if (apiKey != null) {
+            // Refresh wallpapers if API key is set
+            viewModel.fetchWallpapers("date_added")
+            viewModel.fetchWallpapers("toplist")
+        }
+    }
 
     private fun showFilterDialog() {
         val filterDialog = FilterDialog(viewModel)
@@ -70,7 +139,9 @@ class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener {
     }
 
     override fun onFilterApplied(categories: String, purity: String) {
+        Log.d("MainActivity", "Filter applied: categories=$categories, purity=$purity")
         viewModel.updateFilters(categories, purity)
+        refreshCurrentFragment()
     }
 
     private fun refreshCurrentFragment() {
@@ -81,7 +152,6 @@ class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener {
         }
     }
 
-    // Add this method to observe filter changes
     private fun observeFilterChanges() {
         viewModel.filterChanged.observe(this) { changed ->
             if (changed) {
@@ -90,7 +160,6 @@ class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener {
         }
     }
 }
-
 
 class WallpaperPagerAdapter(
     activity: AppCompatActivity,
@@ -107,14 +176,12 @@ class WallpaperPagerAdapter(
                 viewModel.currentCategories,
                 viewModel.currentPurity
             )
-
             1 -> WallpaperFragment.newInstance(
                 false,
                 "toplist",
                 viewModel.currentCategories,
                 viewModel.currentPurity
             )
-
             else -> throw IllegalArgumentException("Invalid position")
         }
     }

@@ -6,16 +6,17 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
-import kotlinx.coroutines.delay
 
 class WallpaperViewModel(context: Context) : ViewModel() {
+
+
     private val apiService: WallhavenApiService by lazy {
         Retrofit.Builder()
             .baseUrl("https://wallhaven.cc/api/v1/")
@@ -23,7 +24,6 @@ class WallpaperViewModel(context: Context) : ViewModel() {
             .build()
             .create(WallhavenApiService::class.java)
     }
-
 
     private val _recentWallpapers = MutableLiveData<List<Wallpaper>>()
     val recentWallpapers: LiveData<List<Wallpaper>> = _recentWallpapers
@@ -34,8 +34,15 @@ class WallpaperViewModel(context: Context) : ViewModel() {
     val filterChanged = MutableLiveData<Boolean>()
 
     private val sharedPreferences: SharedPreferences by lazy {
-        context.getSharedPreferences("WallpaperPrefs", Context.MODE_PRIVATE)
+        context.getSharedPreferences("WallsPrefs", Context.MODE_PRIVATE)
     }
+
+    private fun getApiKey(): String {
+        val apiKey = sharedPreferences.getString("API_KEY", "") ?: ""
+        Log.d("WallpaperViewModel", "Fetched API key: $apiKey")
+        return apiKey
+    }
+
 
     var currentCategories: String
     var currentPurity: String
@@ -58,14 +65,20 @@ class WallpaperViewModel(context: Context) : ViewModel() {
                 }
                 lastApiCallTime = System.currentTimeMillis()
 
-                Log.d("WallpaperViewModel", "Making API call with sorting: $sorting, categories: $currentCategories, purity: $currentPurity")
+                val apiKey = getApiKey()
+                if (apiKey.isBlank()) {
+                    Log.e("WallpaperViewModel", "API key is blank or null")
+                }
+
+                Log.d("WallpaperViewModel", "Making API call with sorting: $sorting, categories: $currentCategories, purity: $currentPurity, API Key: $apiKey")
+
                 val response = apiService.searchWallpapers(
-                    apiKey = BuildConfig.API_KEY,
+                    apiKey = apiKey,
                     sorting = sorting,
                     categories = currentCategories,
                     purity = currentPurity
                 )
-
+                Log.d("WallpaperViewModel", "API response received, wallpapers count: ${response.data.size}")
                 when (sorting) {
                     "date_added" -> {
                         _recentWallpapers.value = response.data
@@ -104,16 +117,6 @@ class WallpaperViewModel(context: Context) : ViewModel() {
         }
     }
 
-    class Factory(private val context: Context) : ViewModelProvider.Factory {
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            if (modelClass.isAssignableFrom(WallpaperViewModel::class.java)) {
-                @Suppress("UNCHECKED_CAST")
-                return WallpaperViewModel(context) as T
-            }
-            throw IllegalArgumentException("Unknown ViewModel class")
-        }
-    }
-
     fun isGeneralSelected() = currentCategories[0] == '1'
     fun isAnimeSelected() = currentCategories[1] == '1'
     fun isPeopleSelected() = currentCategories[2] == '1'
@@ -129,7 +132,7 @@ class WallpaperViewModel(context: Context) : ViewModel() {
 interface WallhavenApiService {
     @GET("search")
     suspend fun searchWallpapers(
-        @Query("apikey") apiKey: String,
+        @Query("apikey") apiKey: String?,
         @Query("sorting") sorting: String,
         @Query("categories") categories: String,
         @Query("purity") purity: String

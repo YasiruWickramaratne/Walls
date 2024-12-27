@@ -1,16 +1,9 @@
-import java.io.FileInputStream
-import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
 }
 
-val apiKeyPropertiesFile = rootProject.file("apikey.properties")
-val apiKeyProperties = Properties()
-apiKeyProperties.load(FileInputStream(apiKeyPropertiesFile))
-
-project.ext.set("API_KEY", apiKeyProperties["API_KEY"] as String)
 android {
     namespace = "com.example.walls"
     compileSdk = 35
@@ -24,8 +17,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Add this block to include the API key
-        buildConfigField("String", "API_KEY", "\"${project.property("API_KEY")}\"")
     }
 
     // Add this block to enable BuildConfig
