@@ -3,12 +3,10 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <ImageView
+    <com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
         android:id="@+id/full_screen_image_view"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:contentDescription="@string/image"
-        android:scaleType="fitCenter" />
+        android:layout_height="match_parent" />
 
     <LinearLayout
         style="?android:attr/buttonBarStyle"

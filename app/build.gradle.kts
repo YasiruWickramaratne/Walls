@@ -18,7 +18,7 @@ android {
     defaultConfig {
         applicationId = "com.example.walls"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -74,4 +74,5 @@ dependencies {
     implementation(libs.glide)
     annotationProcessor(libs.compiler)
     implementation(libs.androidx.viewpager2)
+    implementation(libs.subsampling.scale.image.view)
 }
