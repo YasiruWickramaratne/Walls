@@ -12,6 +12,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 
+
 class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener {
     private lateinit var viewPager: ViewPager2
     private lateinit var tabLayout: TabLayout
@@ -22,7 +23,8 @@ class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener {
         setContentView(R.layout.activity_main)
         Log.d("MainActivity", "onCreate called")
 
-        viewModel = ViewModelProvider(this)[WallpaperViewModel::class.java]
+        viewModel = ViewModelProvider(this, WallpaperViewModel.Factory(applicationContext))
+            .get(WallpaperViewModel::class.java)
         observeFilterChanges()
 
         // Set up ViewPager and TabLayout
@@ -34,8 +36,8 @@ class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener {
 
         // Initial fetch for both tabs
         Log.d("MainActivity", "Fetching initial wallpapers")
-        viewModel.fetchWallpapers("date_added", categories = "111", purity = "100")
-        viewModel.fetchWallpapers("toplist", categories = "111", purity = "100")
+        viewModel.fetchWallpapers("date_added")
+        viewModel.fetchWallpapers("toplist")
 
         TabLayoutMediator(tabLayout, viewPager) { tab, position ->
             tab.text = when (position) {
@@ -50,6 +52,8 @@ class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener {
             showFilterDialog()
         }
 
+        observeFilterChanges()
+
         viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 Log.d("MainActivity", "Page selected: $position")
@@ -58,50 +62,30 @@ class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener {
         })
     }
 
-    private fun notifyCurrentFragmentFilterChanged() {
-        val currentFragment = supportFragmentManager.findFragmentByTag("f${viewPager.currentItem}")
-        if (currentFragment is WallpaperFragment) {
-            currentFragment.updateFilters(viewModel.currentCategories, viewModel.currentPurity)
-        }
-    }
-
-
 
     private fun showFilterDialog() {
-        val filterDialog = FilterDialog()
+        val filterDialog = FilterDialog(viewModel)
         filterDialog.setFilterDialogListener(this)
         filterDialog.show(supportFragmentManager, "FilterDialog")
     }
 
     override fun onFilterApplied(categories: String, purity: String) {
-        Log.d("MainActivity", "Filter applied: categories=$categories, purity=$purity")
-        viewModel.currentCategories = categories
-        viewModel.currentPurity = purity
-        notifyCurrentFragmentFilterChanged()
-        refreshCurrentFragment()
+        viewModel.updateFilters(categories, purity)
     }
 
     private fun refreshCurrentFragment() {
-        val currentFragment = supportFragmentManager.findFragmentByTag("f${viewPager.currentItem}")
-        if (currentFragment is WallpaperFragment) {
-            currentFragment.refreshWallpapers()
-        }
-    }
-
-
-    private fun updateCurrentTab() {
         val currentItem = viewPager.currentItem
-        Log.d("MainActivity", "Updating current tab: $currentItem")
-        val sorting = if (currentItem == 0) "date_added" else "toplist"
-        viewModel.fetchWallpapers(sorting, viewModel.currentCategories, viewModel.currentPurity)
+        when (currentItem) {
+            0 -> viewModel.fetchWallpapers("date_added")
+            1 -> viewModel.fetchWallpapers("toplist")
+        }
     }
 
     // Add this method to observe filter changes
     private fun observeFilterChanges() {
         viewModel.filterChanged.observe(this) { changed ->
             if (changed) {
-                Log.d("MainActivity", "Filter changed, updating current tab")
-                updateCurrentTab()
+                refreshCurrentFragment()
             }
         }
     }
