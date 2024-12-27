@@ -47,14 +47,14 @@ class WallpaperViewModel(context: Context) : ViewModel() {
 
 
     private var lastApiCallTime = 0L
-    private val API_CALL_COOLDOWN = 5000L // 5 seconds cooldown
+    private val apiCallCoolDown = 5000L // 5 seconds cooldown
 
     fun fetchWallpapers(sorting: String) {
         viewModelScope.launch {
             try {
                 val currentTime = System.currentTimeMillis()
-                if (currentTime - lastApiCallTime < API_CALL_COOLDOWN) {
-                    delay(API_CALL_COOLDOWN - (currentTime - lastApiCallTime))
+                if (currentTime - lastApiCallTime < apiCallCoolDown) {
+                    delay(apiCallCoolDown - (currentTime - lastApiCallTime))
                 }
                 lastApiCallTime = System.currentTimeMillis()
 
@@ -143,6 +143,7 @@ data class WallpaperResponse(
 data class Wallpaper(
     val id: String,
     val url: String,
+    val path: String,  // Add this line for the full resolution image URL
     val thumbs: Thumbs
 )
 

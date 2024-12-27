@@ -10,7 +10,7 @@ import com.bumptech.glide.Glide
 import com.example.walls.R
 import com.example.walls.Wallpaper
 
-class WallpaperAdapter : ListAdapter<Wallpaper, WallpaperAdapter.ViewHolder>(WallpaperDiffCallback()) {
+class WallpaperAdapter(private val onItemClick: (Wallpaper) -> Unit) : ListAdapter<Wallpaper, WallpaperAdapter.ViewHolder>(WallpaperDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_wallpaper, parent, false)
@@ -22,15 +22,22 @@ class WallpaperAdapter : ListAdapter<Wallpaper, WallpaperAdapter.ViewHolder>(Wal
         holder.bind(wallpaper)
     }
 
-    class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val imageView: ImageView = itemView.findViewById(R.id.wallpaper_image_view)
         private val titleTextView: TextView = itemView.findViewById(R.id.wallpaper_title_text_view)
 
         fun bind(wallpaper: Wallpaper) {
             Glide.with(itemView.context)
                 .load(wallpaper.thumbs.small)
+                .placeholder(R.drawable.placeholder_image)
+                .error(R.drawable.error_image)
                 .into(imageView)
+
             titleTextView.text = wallpaper.id
+
+            itemView.setOnClickListener {
+                onItemClick(wallpaper)
+            }
         }
     }
 

@@ -13,4 +13,8 @@
     <string name="purity">Purity</string>
     <string name="filter">Filter</string>
     <string name="wallpaper_image_description">Image Description</string>
+    <string name="set_home_screen">Set Home Screen</string>
+    <string name="set_lock_screen">Set Lock Screen</string>
+    <string name="set_both_screens">Set Both Screens</string>
+    <string name="image">Wallpaper Image</string>
 </resources>

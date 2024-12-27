@@ -8,7 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-
+import android.content.Intent
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.snackbar.Snackbar
@@ -45,7 +45,9 @@ class WallpaperFragment : Fragment(),FilterUpdateListener  {
         super.onViewCreated(view, savedInstanceState)
 
         viewModel = ViewModelProvider(requireActivity())[WallpaperViewModel::class.java]
-        adapter = WallpaperAdapter()
+        adapter = WallpaperAdapter { wallpaper ->
+            openFullScreenImage(wallpaper)
+        }
 
         recyclerView = view.findViewById(R.id.recyclerView)
         recyclerView.layoutManager = GridLayoutManager(context, 2)
@@ -73,6 +75,15 @@ class WallpaperFragment : Fragment(),FilterUpdateListener  {
 
     private fun updateWallpapers(wallpapers: List<Wallpaper>) {
         adapter.submitList(wallpapers)
+    }
+
+
+    
+    private fun openFullScreenImage(wallpaper: Wallpaper) {
+        val intent = Intent(requireContext(), FullScreenImageActivity::class.java).apply {
+            putExtra("IMAGE_URL", wallpaper.path)  // Use 'path' instead of 'thumbs.original'
+        }
+        startActivity(intent)
     }
 
     companion object {
