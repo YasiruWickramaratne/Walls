@@ -1,5 +1,6 @@
 package com.example.walls
 
+import FavoritesManager
 import FilterDialog
 import android.content.Context
 import android.content.Intent
@@ -30,8 +31,10 @@ class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener, Nav
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        viewModel = ViewModelProvider(this, WallpaperViewModelFactory(application)).get(WallpaperViewModel::class.java)
 
+        val favoritesManager = FavoritesManager(application)
+        val factory = WallpaperViewModelFactory(application, favoritesManager)
+        viewModel = ViewModelProvider(this, factory)[WallpaperViewModel::class.java]
         Log.d("MainActivity", "onCreate called")
 
         // Set up the toolbar

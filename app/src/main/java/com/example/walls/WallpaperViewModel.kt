@@ -16,9 +16,11 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
 
-class WallpaperViewModel(application: Application) : AndroidViewModel(application) {
+class WallpaperViewModel(
+    application: Application,
+    private val favoritesManager: FavoritesManager
+) : AndroidViewModel(application) {
 
-    private val favoritesManager = FavoritesManager(application)
 
     private val _favoriteWallpapers = MutableLiveData<List<FavoritesManager.WallpaperDetail>>()
     val favoriteWallpapers: LiveData<List<FavoritesManager.WallpaperDetail>> = _favoriteWallpapers

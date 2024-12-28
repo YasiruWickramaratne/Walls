@@ -2,6 +2,7 @@ package com.example.walls
 
 
 
+import FavoritesManager
 import android.app.WallpaperManager
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
@@ -38,8 +39,10 @@ class FullScreenImageActivity : AppCompatActivity() {
         try {
             // Initialize ViewModel
             Log.d("FullScreenImageActivity", "Initializing ViewModel")
-            val factory = WallpaperViewModelFactory(application)
+            val favoritesManager = FavoritesManager(application)
+            val factory = WallpaperViewModelFactory(application, favoritesManager)
             viewModel = ViewModelProvider(this, factory)[WallpaperViewModel::class.java]
+
             Log.d("FullScreenImageActivity", "ViewModel initialized")
 
             // Initialize ViewModel
