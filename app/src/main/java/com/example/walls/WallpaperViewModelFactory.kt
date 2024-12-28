@@ -1,13 +1,15 @@
-import android.content.Context
+package com.example.walls
+
+
+import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.example.walls.WallpaperViewModel
 
-class WallpaperViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
+class WallpaperViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(WallpaperViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return WallpaperViewModel(context) as T
+            return WallpaperViewModel(application) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

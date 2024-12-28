@@ -1,6 +1,6 @@
 package com.example.walls
 
-import WallpaperAdapter
+import WallpaperAdapter // Ensure this is the correct adapter import
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -13,7 +13,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.snackbar.Snackbar
 
-class WallpaperFragment : Fragment(),FilterUpdateListener  {
+class WallpaperFragment : Fragment(), FilterUpdateListener {
     private lateinit var viewModel: WallpaperViewModel
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: WallpaperAdapter
@@ -77,14 +77,14 @@ class WallpaperFragment : Fragment(),FilterUpdateListener  {
         adapter.submitList(wallpapers)
     }
 
-
-    
     private fun openFullScreenImage(wallpaper: Wallpaper) {
         val intent = Intent(requireContext(), FullScreenImageActivity::class.java).apply {
+            putExtra("WALLPAPER_ID", wallpaper.id) // Add this line
             putExtra("IMAGE_URL", wallpaper.path)  // Use 'path' instead of 'thumbs.original'
         }
         startActivity(intent)
     }
+
 
     companion object {
         private const val ARG_IS_RECENT_TAB = "is_recent_tab"

@@ -1,7 +1,6 @@
 package com.example.walls
 
 import FilterDialog
-import WallpaperViewModelFactory
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -31,6 +30,8 @@ class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener, Nav
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        viewModel = ViewModelProvider(this, WallpaperViewModelFactory(application)).get(WallpaperViewModel::class.java)
+
         Log.d("MainActivity", "onCreate called")
 
         // Set up the toolbar
@@ -48,11 +49,6 @@ class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener, Nav
         )
         drawerLayout.addDrawerListener(toggle)
         toggle.syncState()
-
-        viewModel = ViewModelProvider(this, WallpaperViewModelFactory(applicationContext))
-            .get(WallpaperViewModel::class.java)
-
-
 
         observeFilterChanges()
 
@@ -109,7 +105,8 @@ class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener, Nav
                 // Handle home action
             }
             R.id.nav_favorites -> {
-                // Handle favorites action
+                val intent = Intent(this, FavoritesActivity::class.java)
+                startActivity(intent)
             }
             R.id.nav_settings -> {
                 val intent = Intent(this, SettingsActivity::class.java)

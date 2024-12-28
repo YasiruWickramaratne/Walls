@@ -1,11 +1,13 @@
 package com.example.walls
 
+import FavoritesManager
+import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -14,7 +16,21 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
 
-class WallpaperViewModel(context: Context) : ViewModel() {
+class WallpaperViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val favoritesManager = FavoritesManager(application)
+
+    private val _favoriteWallpapers = MutableLiveData<List<FavoritesManager.WallpaperDetail>>()
+    val favoriteWallpapers: LiveData<List<FavoritesManager.WallpaperDetail>> = _favoriteWallpapers
+
+
+    private val sharedPreferences: SharedPreferences by lazy {
+        getApplication<Application>().getSharedPreferences("WallsPrefs", Context.MODE_PRIVATE)
+    }
+
+    private val favoritesPreferences: SharedPreferences by lazy {
+        getApplication<Application>().getSharedPreferences("Favorites", Context.MODE_PRIVATE)
+    }
 
 
     private val apiService: WallhavenApiService by lazy {
@@ -25,6 +41,21 @@ class WallpaperViewModel(context: Context) : ViewModel() {
             .create(WallhavenApiService::class.java)
     }
 
+    private val _favorites = MutableLiveData<Set<String>>(setOf())
+
+
+    fun fetchFavoriteWallpapers() {
+        viewModelScope.launch {
+            val apiKey = getApiKey()
+            _favoriteWallpapers.value = favoritesManager.fetchFavoriteWallpapers(apiKey)
+        }
+    }
+
+    init {
+        favoritesPreferences
+        loadFavorites()
+    }
+
     private val _recentWallpapers = MutableLiveData<List<Wallpaper>>()
     val recentWallpapers: LiveData<List<Wallpaper>> = _recentWallpapers
 
@@ -33,9 +64,6 @@ class WallpaperViewModel(context: Context) : ViewModel() {
 
     val filterChanged = MutableLiveData<Boolean>()
 
-    private val sharedPreferences: SharedPreferences by lazy {
-        context.getSharedPreferences("WallsPrefs", Context.MODE_PRIVATE)
-    }
 
     private fun getApiKey(): String {
         val apiKey = sharedPreferences.getString("API_KEY", "") ?: ""
@@ -43,6 +71,17 @@ class WallpaperViewModel(context: Context) : ViewModel() {
         return apiKey
     }
 
+    fun toggleFavorite(id: String) {
+        favoritesManager.toggleFavorite(id)
+    }
+
+    private fun loadFavorites() {
+        _favorites.value = favoritesPreferences.getStringSet("favorite_ids", setOf()) ?: setOf()
+    }
+
+    fun isFavorite(id: String): Boolean {
+        return favoritesManager.isFavorite(id)
+    }
 
     var currentCategories: String
     var currentPurity: String
