@@ -21,6 +21,7 @@ android {
 
     // Add this block to enable BuildConfig
     buildFeatures {
+        viewBinding = true
         buildConfig = true
     }
 
