@@ -9,8 +9,11 @@ import android.util.Log
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.walls.databinding.ActivityFavoritesBinding
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 class FavoritesActivity : AppCompatActivity() {
 
@@ -37,21 +40,23 @@ class FavoritesActivity : AppCompatActivity() {
             adapter = this@FavoritesActivity.adapter
         }
 
-        viewModel.favoriteWallpapers.observe(this) { wallpaperDetails ->
-            val wallpapers = wallpaperDetails.map { detail ->
-                Wallpaper(
-                    id = detail.id,
-                    url = detail.url,
-                    path = detail.path,
-                    thumbs = Thumbs(
-                        small = detail.thumbs.small,
-                        original = detail.thumbs.original,
-                        large = detail.thumbs.large
+        lifecycleScope.launch {
+            viewModel.favoriteWallpapers.collectLatest { wallpaperDetails ->
+                val wallpapers = wallpaperDetails.map { detail ->
+                    Wallpaper(
+                        id = detail.id,
+                        url = detail.url,
+                        path = detail.path,
+                        thumbs = Thumbs(
+                            small = detail.thumbs.small,
+                            original = detail.thumbs.original,
+                            large = detail.thumbs.large
+                        )
                     )
-                )
+                }
+                updateEmptyState(wallpapers.isEmpty())
+                adapter.submitList(wallpapers)
             }
-            updateEmptyState(wallpapers.isEmpty())
-            adapter.submitList(wallpapers)
         }
         Log.d("FavoritesActivity", "Fetching favorite wallpapers")
     }

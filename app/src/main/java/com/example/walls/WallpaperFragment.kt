@@ -1,6 +1,6 @@
 package com.example.walls
 
-import WallpaperAdapter // Ensure this is the correct adapter import
+import WallpaperAdapter
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -11,7 +11,10 @@ import androidx.recyclerview.widget.RecyclerView
 import android.content.Intent
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 class WallpaperFragment : Fragment(), FilterUpdateListener {
     private lateinit var viewModel: WallpaperViewModel
@@ -66,13 +69,15 @@ class WallpaperFragment : Fragment(), FilterUpdateListener {
     }
 
     private fun observeWallpapers() {
-        if (isRecentTab) {
-            viewModel.recentWallpapers.observe(viewLifecycleOwner) { wallpapers ->
-                updateWallpapers(wallpapers)
-            }
-        } else {
-            viewModel.topWallpapers.observe(viewLifecycleOwner) { wallpapers ->
-                updateWallpapers(wallpapers)
+        lifecycleScope.launch {
+            if (isRecentTab) {
+                viewModel.recentWallpapers.collectLatest { wallpapers ->
+                    updateWallpapers(wallpapers)
+                }
+            } else {
+                viewModel.topWallpapers.collectLatest { wallpapers ->
+                    updateWallpapers(wallpapers)
+                }
             }
         }
     }
@@ -83,12 +88,11 @@ class WallpaperFragment : Fragment(), FilterUpdateListener {
 
     private fun openFullScreenImage(wallpaper: Wallpaper) {
         val intent = Intent(requireContext(), FullScreenImageActivity::class.java).apply {
-            putExtra("WALLPAPER_ID", wallpaper.id) // Add this line
-            putExtra("IMAGE_URL", wallpaper.path)  // Use 'path' instead of 'thumbs.original'
+            putExtra("WALLPAPER_ID", wallpaper.id)
+            putExtra("IMAGE_URL", wallpaper.path)
         }
         startActivity(intent)
     }
-
 
     companion object {
         private const val ARG_IS_RECENT_TAB = "is_recent_tab"

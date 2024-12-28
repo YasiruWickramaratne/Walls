@@ -15,12 +15,15 @@ import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.navigation.NavigationView
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity(),
     NavigationView.OnNavigationItemSelectedListener {
@@ -158,9 +161,11 @@ class MainActivity : AppCompatActivity(),
     }
 
     private fun observeFilterChanges() {
-        viewModel.filterChanged.observe(this) { changed ->
-            if (changed) {
-                refreshCurrentFragment()
+        lifecycleScope.launch {
+            viewModel.filterChanged.collectLatest { changed ->
+                if (changed) {
+                    refreshCurrentFragment()
+                }
             }
         }
     }

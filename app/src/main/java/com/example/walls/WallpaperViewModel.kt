@@ -6,10 +6,10 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -21,9 +21,8 @@ class WallpaperViewModel(
     private val favoritesManager: FavoritesManager
 ) : AndroidViewModel(application) {
 
-    private val _favoriteWallpapers = MutableLiveData<List<FavoritesManager.WallpaperDetail>>()
-    val favoriteWallpapers: LiveData<List<FavoritesManager.WallpaperDetail>> = _favoriteWallpapers
-
+    private val _favoriteWallpapers = MutableStateFlow<List<FavoritesManager.WallpaperDetail>>(emptyList())
+    val favoriteWallpapers: StateFlow<List<FavoritesManager.WallpaperDetail>> = _favoriteWallpapers
 
     private val sharedPreferences: SharedPreferences by lazy {
         getApplication<Application>().getSharedPreferences("WallsPrefs", Context.MODE_PRIVATE)
@@ -41,8 +40,7 @@ class WallpaperViewModel(
             .create(WallhavenApiService::class.java)
     }
 
-    private val _favorites = MutableLiveData<Set<String>>(setOf())
-
+    private val _favorites = MutableStateFlow<Set<String>>(setOf())
 
     fun fetchFavoriteWallpapers() {
         viewModelScope.launch {
@@ -56,13 +54,14 @@ class WallpaperViewModel(
         loadFavorites()
     }
 
-    private val _recentWallpapers = MutableLiveData<List<Wallpaper>>()
-    val recentWallpapers: LiveData<List<Wallpaper>> = _recentWallpapers
+    private val _recentWallpapers = MutableStateFlow<List<Wallpaper>>(emptyList())
+    val recentWallpapers: StateFlow<List<Wallpaper>> = _recentWallpapers
 
-    private val _topWallpapers = MutableLiveData<List<Wallpaper>>()
-    val topWallpapers: LiveData<List<Wallpaper>> = _topWallpapers
+    private val _topWallpapers = MutableStateFlow<List<Wallpaper>>(emptyList())
+    val topWallpapers: StateFlow<List<Wallpaper>> = _topWallpapers
 
-    val filterChanged = MutableLiveData<Boolean>()
+    private val _filterChanged = MutableStateFlow(false)
+    val filterChanged: StateFlow<Boolean> = _filterChanged
 
 
     private fun getApiKey(): String {
@@ -145,7 +144,7 @@ class WallpaperViewModel(
                     }
                 }
 
-                filterChanged.value = false
+                _filterChanged.value = false
             } catch (e: Exception) {
                 Log.e("WallpaperViewModel", "Error fetching wallpapers", e)
                 // You might want to set an error state here to show in the UI
@@ -158,7 +157,7 @@ class WallpaperViewModel(
         currentCategories = categories
         currentPurity = purity
         saveFilterSettings()
-        filterChanged.value = true
+        _filterChanged.value = true
     }
 
     private fun saveFilterSettings() {
@@ -192,6 +191,7 @@ interface WallhavenApiService {
 data class WallpaperResponse(
     val data: List<Wallpaper>
 )
+
 
 data class Wallpaper(
     val id: String,
