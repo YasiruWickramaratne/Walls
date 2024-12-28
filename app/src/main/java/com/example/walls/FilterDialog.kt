@@ -7,14 +7,11 @@ import com.example.walls.R
 import com.example.walls.WallpaperViewModel
 
 class FilterDialog(private val viewModel: WallpaperViewModel) : DialogFragment() {
-    interface FilterDialogListener {
-        fun onFilterApplied(categories: String, purity: String)
-    }
 
-    private var listener: FilterDialogListener? = null
+    private var onFilterApplied: ((categories: String, purity: String) -> Unit)? = null
 
-    fun setFilterDialogListener(listener: FilterDialogListener) {
-        this.listener = listener
+    fun setOnFilterAppliedListener(listener: (categories: String, purity: String) -> Unit) {
+        this.onFilterApplied = listener
     }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
@@ -36,14 +33,15 @@ class FilterDialog(private val viewModel: WallpaperViewModel) : DialogFragment()
         val cbNsfw = view.findViewById<CheckBox>(R.id.cb_nsfw)
         val cbSelectAllPurity = view.findViewById<CheckBox>(R.id.cb_select_all_purity)
 
-        // Set initial checkbox states
-        cbGeneral.isChecked = viewModel.isGeneralSelected()
-        cbAnime.isChecked = viewModel.isAnimeSelected()
-        cbPeople.isChecked = viewModel.isPeopleSelected()
+        // Set initial checkbox states, restoring from savedInstanceState if available
+        cbGeneral.isChecked = savedInstanceState?.getBoolean("general", viewModel.isGeneralSelected()) ?: viewModel.isGeneralSelected()
+        cbAnime.isChecked = savedInstanceState?.getBoolean("anime", viewModel.isAnimeSelected()) ?: viewModel.isAnimeSelected()
+        cbPeople.isChecked = savedInstanceState?.getBoolean("people", viewModel.isPeopleSelected()) ?: viewModel.isPeopleSelected()
 
-        cbSfw.isChecked = viewModel.isSfwSelected()
-        cbSketchy.isChecked = viewModel.isSketchySelected()
-        cbNsfw.isChecked = viewModel.isNsfwSelected()
+        cbSfw.isChecked = savedInstanceState?.getBoolean("sfw", viewModel.isSfwSelected()) ?: viewModel.isSfwSelected()
+        cbSketchy.isChecked = savedInstanceState?.getBoolean("sketchy", viewModel.isSketchySelected()) ?: viewModel.isSketchySelected()
+        cbNsfw.isChecked = savedInstanceState?.getBoolean("nsfw", viewModel.isNsfwSelected()) ?: viewModel.isNsfwSelected()
+
 
         // Update "Select All" checkboxes
         cbSelectAllCategories.isChecked =
@@ -73,7 +71,7 @@ class FilterDialog(private val viewModel: WallpaperViewModel) : DialogFragment()
                 )
                 val purity =
                     buildPurityString(cbSfw.isChecked, cbSketchy.isChecked, cbNsfw.isChecked)
-                listener?.onFilterApplied(categories, purity)
+                onFilterApplied?.invoke(categories, purity)
             }
             .setNegativeButton("Cancel", null)
 

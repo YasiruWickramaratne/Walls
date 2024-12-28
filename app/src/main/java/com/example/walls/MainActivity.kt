@@ -8,21 +8,21 @@ import android.os.Bundle
 import android.util.Log
 import android.view.MenuItem
 import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
+import androidx.core.view.GravityCompat
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.material.navigation.NavigationView
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
-import androidx.appcompat.app.ActionBarDrawerToggle
-import androidx.core.view.GravityCompat
-import androidx.drawerlayout.widget.DrawerLayout
-import com.google.android.material.navigation.NavigationView
-import androidx.appcompat.widget.Toolbar
 
-class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener,
+class MainActivity : AppCompatActivity(),
     NavigationView.OnNavigationItemSelectedListener {
     private lateinit var viewPager: ViewPager2
     private lateinit var tabLayout: TabLayout
@@ -137,11 +137,13 @@ class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener,
 
     private fun showFilterDialog() {
         val filterDialog = FilterDialog(viewModel)
-        filterDialog.setFilterDialogListener(this)
+        filterDialog.setOnFilterAppliedListener { categories, purity ->
+            onFilterApplied(categories, purity)
+        }
         filterDialog.show(supportFragmentManager, "FilterDialog")
     }
 
-    override fun onFilterApplied(categories: String, purity: String) {
+    private fun onFilterApplied(categories: String, purity: String) {
         Log.d("MainActivity", "Filter applied: categories=$categories, purity=$purity")
         viewModel.updateFilters(categories, purity)
         refreshCurrentFragment()

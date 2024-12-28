@@ -2,46 +2,40 @@ package com.example.walls
 
 import FavoritesManager
 import WallpaperAdapter
-import android.annotation.SuppressLint
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.util.Log
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import android.content.Intent
-import android.net.Uri
-import android.util.Log
-import android.view.View
-import android.widget.TextView
+import com.example.walls.databinding.ActivityFavoritesBinding
 
 class FavoritesActivity : AppCompatActivity() {
 
+    private lateinit var binding: ActivityFavoritesBinding
     private lateinit var viewModel: WallpaperViewModel
     private lateinit var adapter: WallpaperAdapter
-    private lateinit var emptyStateTextView: TextView
 
-    @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_favorites)
+        binding = ActivityFavoritesBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         val favoritesManager = FavoritesManager(application)
         val factory = WallpaperViewModelFactory(application, favoritesManager)
         viewModel = ViewModelProvider(this, factory)[WallpaperViewModel::class.java]
 
         adapter = WallpaperAdapter { wallpaper ->
-            // Handle item click
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(wallpaper.url))
             startActivity(intent)
         }
 
-        // Set up RecyclerView
-        findViewById<RecyclerView>(R.id.favoritesRecyclerView).apply {
+        binding.favoritesRecyclerView.apply {
             layoutManager = GridLayoutManager(this@FavoritesActivity, 2)
             adapter = this@FavoritesActivity.adapter
         }
-
-        emptyStateTextView = findViewById(R.id.emptyStateTextView)
 
         viewModel.favoriteWallpapers.observe(this) { wallpaperDetails ->
             val wallpapers = wallpaperDetails.map { detail ->
@@ -63,10 +57,8 @@ class FavoritesActivity : AppCompatActivity() {
     }
 
     private fun updateEmptyState(isEmpty: Boolean) {
-        findViewById<RecyclerView>(R.id.favoritesRecyclerView).visibility =
-            if (isEmpty) View.GONE else View.VISIBLE
-        findViewById<TextView>(R.id.emptyStateTextView).visibility =
-            if (isEmpty) View.VISIBLE else View.GONE
+        binding.favoritesRecyclerView.visibility = if (isEmpty) View.GONE else View.VISIBLE
+        binding.emptyStateTextView.visibility = if (isEmpty) View.VISIBLE else View.GONE
     }
 
     override fun onResume() {
