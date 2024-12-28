@@ -22,7 +22,8 @@ import androidx.drawerlayout.widget.DrawerLayout
 import com.google.android.material.navigation.NavigationView
 import androidx.appcompat.widget.Toolbar
 
-class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener, NavigationView.OnNavigationItemSelectedListener {
+class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener,
+    NavigationView.OnNavigationItemSelectedListener {
     private lateinit var viewPager: ViewPager2
     private lateinit var tabLayout: TabLayout
     private lateinit var viewModel: WallpaperViewModel
@@ -107,10 +108,12 @@ class MainActivity : AppCompatActivity(), FilterDialog.FilterDialogListener, Nav
             R.id.nav_home -> {
                 // Handle home action
             }
+
             R.id.nav_favorites -> {
                 val intent = Intent(this, FavoritesActivity::class.java)
                 startActivity(intent)
             }
+
             R.id.nav_settings -> {
                 val intent = Intent(this, SettingsActivity::class.java)
                 startActivity(intent)
@@ -176,12 +179,14 @@ class WallpaperPagerAdapter(
                 viewModel.currentCategories,
                 viewModel.currentPurity
             )
+
             1 -> WallpaperFragment.newInstance(
                 false,
                 "toplist",
                 viewModel.currentCategories,
                 viewModel.currentPurity
             )
+
             else -> throw IllegalArgumentException("Invalid position")
         }
     }

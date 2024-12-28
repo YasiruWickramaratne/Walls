@@ -46,7 +46,8 @@ class FilterDialog(private val viewModel: WallpaperViewModel) : DialogFragment()
         cbNsfw.isChecked = viewModel.isNsfwSelected()
 
         // Update "Select All" checkboxes
-        cbSelectAllCategories.isChecked = cbGeneral.isChecked && cbAnime.isChecked && cbPeople.isChecked
+        cbSelectAllCategories.isChecked =
+            cbGeneral.isChecked && cbAnime.isChecked && cbPeople.isChecked
         cbSelectAllPurity.isChecked = cbSfw.isChecked && cbSketchy.isChecked && cbNsfw.isChecked
 
         // Set up "Select All" functionality for categories
@@ -65,8 +66,13 @@ class FilterDialog(private val viewModel: WallpaperViewModel) : DialogFragment()
 
         builder.setView(view)
             .setPositiveButton("Apply") { _, _ ->
-                val categories = buildCategoriesString(cbGeneral.isChecked, cbAnime.isChecked, cbPeople.isChecked)
-                val purity = buildPurityString(cbSfw.isChecked, cbSketchy.isChecked, cbNsfw.isChecked)
+                val categories = buildCategoriesString(
+                    cbGeneral.isChecked,
+                    cbAnime.isChecked,
+                    cbPeople.isChecked
+                )
+                val purity =
+                    buildPurityString(cbSfw.isChecked, cbSketchy.isChecked, cbNsfw.isChecked)
                 listener?.onFilterApplied(categories, purity)
             }
             .setNegativeButton("Cancel", null)

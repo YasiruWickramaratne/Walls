@@ -10,10 +10,12 @@ import com.bumptech.glide.Glide
 import com.example.walls.R
 import com.example.walls.Wallpaper
 
-class WallpaperAdapter(private val onItemClick: (Wallpaper) -> Unit) : ListAdapter<Wallpaper, WallpaperAdapter.ViewHolder>(WallpaperDiffCallback()) {
+class WallpaperAdapter(private val onItemClick: (Wallpaper) -> Unit) :
+    ListAdapter<Wallpaper, WallpaperAdapter.ViewHolder>(WallpaperDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_wallpaper, parent, false)
+        val view =
+            LayoutInflater.from(parent.context).inflate(R.layout.item_wallpaper, parent, false)
         return ViewHolder(view)
     }
 

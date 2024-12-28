@@ -63,8 +63,10 @@ class FavoritesActivity : AppCompatActivity() {
     }
 
     private fun updateEmptyState(isEmpty: Boolean) {
-        findViewById<RecyclerView>(R.id.favoritesRecyclerView).visibility = if (isEmpty) View.GONE else View.VISIBLE
-        findViewById<TextView>(R.id.emptyStateTextView).visibility = if (isEmpty) View.VISIBLE else View.GONE
+        findViewById<RecyclerView>(R.id.favoritesRecyclerView).visibility =
+            if (isEmpty) View.GONE else View.VISIBLE
+        findViewById<TextView>(R.id.emptyStateTextView).visibility =
+            if (isEmpty) View.VISIBLE else View.GONE
     }
 
     override fun onResume() {

@@ -21,7 +21,11 @@ class WallpaperFragment : Fragment(), FilterUpdateListener {
     private val isRecentTab: Boolean by lazy { arguments?.getBoolean(ARG_IS_RECENT_TAB) ?: true }
     private val sorting: String by lazy { arguments?.getString(ARG_SORTING) ?: "date_added" }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
         return inflater.inflate(R.layout.fragment_wallpaper, container, false)
     }
 
@@ -92,7 +96,12 @@ class WallpaperFragment : Fragment(), FilterUpdateListener {
         private const val ARG_CATEGORIES = "categories"
         private const val ARG_PURITY = "purity"
 
-        fun newInstance(isRecentTab: Boolean, sorting: String, categories: String, purity: String): WallpaperFragment {
+        fun newInstance(
+            isRecentTab: Boolean,
+            sorting: String,
+            categories: String,
+            purity: String
+        ): WallpaperFragment {
             return WallpaperFragment().apply {
                 arguments = Bundle().apply {
                     putBoolean(ARG_IS_RECENT_TAB, isRecentTab)

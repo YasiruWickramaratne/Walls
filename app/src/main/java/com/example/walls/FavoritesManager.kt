@@ -10,7 +10,8 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 class FavoritesManager(context: Context) {
-    private val favoritesPreferences: SharedPreferences = context.getSharedPreferences("Favorites", Context.MODE_PRIVATE)
+    private val favoritesPreferences: SharedPreferences =
+        context.getSharedPreferences("Favorites", Context.MODE_PRIVATE)
     private val _favorites = MutableLiveData<Set<String>>(setOf())
 
     private val apiService: WallhavenApiService by lazy {

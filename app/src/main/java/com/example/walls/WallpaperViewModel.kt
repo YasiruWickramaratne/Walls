@@ -21,7 +21,6 @@ class WallpaperViewModel(
     private val favoritesManager: FavoritesManager
 ) : AndroidViewModel(application) {
 
-
     private val _favoriteWallpapers = MutableLiveData<List<FavoritesManager.WallpaperDetail>>()
     val favoriteWallpapers: LiveData<List<FavoritesManager.WallpaperDetail>> = _favoriteWallpapers
 
@@ -33,7 +32,6 @@ class WallpaperViewModel(
     private val favoritesPreferences: SharedPreferences by lazy {
         getApplication<Application>().getSharedPreferences("Favorites", Context.MODE_PRIVATE)
     }
-
 
     private val apiService: WallhavenApiService by lazy {
         Retrofit.Builder()
@@ -93,7 +91,6 @@ class WallpaperViewModel(
         currentPurity = sharedPreferences.getString("purity", "100") ?: "100"
     }
 
-
     private var lastApiCallTime = 0L
     private val apiCallCoolDown = 5000L // 5 seconds cooldown
 
@@ -111,7 +108,10 @@ class WallpaperViewModel(
                     Log.e("WallpaperViewModel", "API key is blank or null")
                 }
 
-                Log.d("WallpaperViewModel", "Making API call with sorting: $sorting, categories: $currentCategories, purity: $currentPurity, API Key: $apiKey")
+                Log.d(
+                    "WallpaperViewModel",
+                    "Making API call with sorting: $sorting, categories: $currentCategories, purity: $currentPurity, API Key: $apiKey"
+                )
 
                 val response = apiService.searchWallpapers(
                     apiKey = apiKey,
@@ -119,16 +119,27 @@ class WallpaperViewModel(
                     categories = currentCategories,
                     purity = currentPurity
                 )
-                Log.d("WallpaperViewModel", "API response received, wallpapers count: ${response.data.size}")
+                Log.d(
+                    "WallpaperViewModel",
+                    "API response received, wallpapers count: ${response.data.size}"
+                )
                 when (sorting) {
                     "date_added" -> {
                         _recentWallpapers.value = response.data
-                        Log.d("WallpaperViewModel", "Updated recent wallpapers, count: ${response.data.size}")
+                        Log.d(
+                            "WallpaperViewModel",
+                            "Updated recent wallpapers, count: ${response.data.size}"
+                        )
                     }
+
                     "toplist" -> {
                         _topWallpapers.value = response.data
-                        Log.d("WallpaperViewModel", "Updated top wallpapers, count: ${response.data.size}")
+                        Log.d(
+                            "WallpaperViewModel",
+                            "Updated top wallpapers, count: ${response.data.size}"
+                        )
                     }
+
                     else -> {
                         Log.w("WallpaperViewModel", "Unknown sorting type: $sorting")
                     }
@@ -165,8 +176,6 @@ class WallpaperViewModel(
     fun isSfwSelected() = currentPurity[0] == '1'
     fun isSketchySelected() = currentPurity[1] == '1'
     fun isNsfwSelected() = currentPurity[2] == '1'
-
-
 
 }
 
