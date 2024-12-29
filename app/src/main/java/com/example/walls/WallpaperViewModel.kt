@@ -2,8 +2,6 @@ package com.example.walls
 
 import FavoritesManager
 import android.app.Application
-import android.content.Context
-import android.content.SharedPreferences
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,47 +9,29 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
 
 class WallpaperViewModel(
     application: Application,
-    private val favoritesManager: FavoritesManager
+    private val wallpaperRepository: WallpaperRepository,
+    private val favoritesRepository: FavoritesRepository
 ) : AndroidViewModel(application) {
 
     private val _favoriteWallpapers = MutableStateFlow<List<FavoritesManager.WallpaperDetail>>(emptyList())
     val favoriteWallpapers: StateFlow<List<FavoritesManager.WallpaperDetail>> = _favoriteWallpapers
 
-    private val sharedPreferences: SharedPreferences by lazy {
-        getApplication<Application>().getSharedPreferences("WallsPrefs", Context.MODE_PRIVATE)
-    }
-
-    private val favoritesPreferences: SharedPreferences by lazy {
-        getApplication<Application>().getSharedPreferences("Favorites", Context.MODE_PRIVATE)
-    }
-
-    private val apiService: WallhavenApiService by lazy {
-        Retrofit.Builder()
-            .baseUrl("https://wallhaven.cc/api/v1/")
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(WallhavenApiService::class.java)
-    }
-
     private val _favorites = MutableStateFlow<Set<String>>(setOf())
+
+    init {
+        loadFavorites()
+    }
 
     fun fetchFavoriteWallpapers() {
         viewModelScope.launch {
-            val apiKey = getApiKey()
-            _favoriteWallpapers.value = favoritesManager.fetchFavoriteWallpapers(apiKey)
+            val apiKey = wallpaperRepository.getApiKey()
+            _favoriteWallpapers.value = favoritesRepository.fetchFavoriteWallpapers(apiKey)
         }
-    }
-
-    init {
-        favoritesPreferences
-        loadFavorites()
     }
 
     private val _recentWallpapers = MutableStateFlow<List<Wallpaper>>(emptyList())
@@ -63,31 +43,25 @@ class WallpaperViewModel(
     private val _filterChanged = MutableStateFlow(false)
     val filterChanged: StateFlow<Boolean> = _filterChanged
 
-
-    private fun getApiKey(): String {
-        val apiKey = sharedPreferences.getString("API_KEY", "") ?: ""
-        Log.d("WallpaperViewModel", "Fetched API key: $apiKey")
-        return apiKey
+    private fun loadFavorites() {
+        _favorites.value = favoritesRepository.loadFavorites()
     }
 
     fun toggleFavorite(id: String) {
-        favoritesManager.toggleFavorite(id)
-    }
-
-    private fun loadFavorites() {
-        _favorites.value = favoritesPreferences.getStringSet("favorite_ids", setOf()) ?: setOf()
+        favoritesRepository.toggleFavorite(id)
     }
 
     fun isFavorite(id: String): Boolean {
-        return favoritesManager.isFavorite(id)
+        return favoritesRepository.isFavorite(id)
     }
 
     var currentCategories: String
     var currentPurity: String
 
     init {
-        currentCategories = sharedPreferences.getString("categories", "111") ?: "111"
-        currentPurity = sharedPreferences.getString("purity", "100") ?: "100"
+        val (categories, purity) = wallpaperRepository.getFilterSettings()
+        currentCategories = categories
+        currentPurity = purity
     }
 
     private var lastApiCallTime = 0L
@@ -102,7 +76,7 @@ class WallpaperViewModel(
                 }
                 lastApiCallTime = System.currentTimeMillis()
 
-                val apiKey = getApiKey()
+                val apiKey = wallpaperRepository.getApiKey()
                 if (apiKey.isBlank()) {
                     Log.e("WallpaperViewModel", "API key is blank or null")
                 }
@@ -112,30 +86,27 @@ class WallpaperViewModel(
                     "Making API call with sorting: $sorting, categories: $currentCategories, purity: $currentPurity, API Key: $apiKey"
                 )
 
-                val response = apiService.searchWallpapers(
+                val wallpapers = wallpaperRepository.fetchWallpapers(
                     apiKey = apiKey,
                     sorting = sorting,
                     categories = currentCategories,
                     purity = currentPurity
                 )
-                Log.d(
-                    "WallpaperViewModel",
-                    "API response received, wallpapers count: ${response.data.size}"
-                )
+
                 when (sorting) {
                     "date_added" -> {
-                        _recentWallpapers.value = response.data
+                        _recentWallpapers.value = wallpapers
                         Log.d(
                             "WallpaperViewModel",
-                            "Updated recent wallpapers, count: ${response.data.size}"
+                            "Updated recent wallpapers, count: ${wallpapers.size}"
                         )
                     }
 
                     "toplist" -> {
-                        _topWallpapers.value = response.data
+                        _topWallpapers.value = wallpapers
                         Log.d(
                             "WallpaperViewModel",
-                            "Updated top wallpapers, count: ${response.data.size}"
+                            "Updated top wallpapers, count: ${wallpapers.size}"
                         )
                     }
 
@@ -147,8 +118,6 @@ class WallpaperViewModel(
                 _filterChanged.value = false
             } catch (e: Exception) {
                 Log.e("WallpaperViewModel", "Error fetching wallpapers", e)
-                // You might want to set an error state here to show in the UI
-                // For example: _errorState.value = "Failed to fetch wallpapers: ${e.message}"
             }
         }
     }
@@ -156,16 +125,8 @@ class WallpaperViewModel(
     fun updateFilters(categories: String, purity: String) {
         currentCategories = categories
         currentPurity = purity
-        saveFilterSettings()
+        wallpaperRepository.saveFilterSettings(categories, purity)
         _filterChanged.value = true
-    }
-
-    private fun saveFilterSettings() {
-        sharedPreferences.edit().apply {
-            putString("categories", currentCategories)
-            putString("purity", currentPurity)
-            apply()
-        }
     }
 
     fun isGeneralSelected() = currentCategories[0] == '1'
@@ -175,7 +136,6 @@ class WallpaperViewModel(
     fun isSfwSelected() = currentPurity[0] == '1'
     fun isSketchySelected() = currentPurity[1] == '1'
     fun isNsfwSelected() = currentPurity[2] == '1'
-
 }
 
 interface WallhavenApiService {
