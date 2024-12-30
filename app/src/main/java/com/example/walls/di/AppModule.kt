@@ -52,7 +52,6 @@ object AppModule {
     @Provides
     @Singleton
     fun provideFavoritesRepositoryImpl(
-        @ApplicationContext context: Context,
         favoritesManager: FavoritesManager
     ): FavoritesRepositoryImpl {
         return FavoritesRepositoryImpl(favoritesManager)
