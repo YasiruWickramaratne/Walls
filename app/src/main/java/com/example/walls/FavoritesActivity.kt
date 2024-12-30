@@ -1,6 +1,5 @@
 package com.example.walls
 
-import FavoritesManager
 import WallpaperAdapter
 import android.content.Intent
 import android.net.Uri

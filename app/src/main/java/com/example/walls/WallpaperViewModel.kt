@@ -1,6 +1,6 @@
 package com.example.walls
 
-import FavoritesManager
+
 import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel

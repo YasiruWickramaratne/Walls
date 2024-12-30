@@ -1,6 +1,6 @@
 package com.example.walls
 
-import FavoritesManager
+
 import FilterDialog
 import android.content.Context
 import android.content.Intent
@@ -24,9 +24,15 @@ import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity(),
     NavigationView.OnNavigationItemSelectedListener {
+    @Inject
+    lateinit var favoritesManager: FavoritesManager
+    
     private lateinit var viewPager: ViewPager2
     private lateinit var tabLayout: TabLayout
     private lateinit var viewModel: WallpaperViewModel
@@ -36,7 +42,6 @@ class MainActivity : AppCompatActivity(),
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val favoritesManager = FavoritesManager(application)
         val factory = WallpaperViewModelFactory(application, favoritesManager)
         viewModel = ViewModelProvider(this, factory)[WallpaperViewModel::class.java]
         Log.d("MainActivity", "onCreate called")

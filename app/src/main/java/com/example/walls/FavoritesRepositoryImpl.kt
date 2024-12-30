@@ -1,6 +1,5 @@
 package com.example.walls
 
-import FavoritesManager
 import android.content.Context
 import android.content.SharedPreferences
 

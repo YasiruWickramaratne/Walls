@@ -1,7 +1,6 @@
 package com.example.walls
 
 
-import FavoritesManager
 import android.app.WallpaperManager
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
