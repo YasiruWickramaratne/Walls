@@ -1,6 +1,5 @@
 package com.example.walls.api
 
-import com.example.walls.FavoritesManager
 import com.example.walls.WallpaperResponse
 import retrofit2.http.GET
 import retrofit2.http.Path
@@ -19,5 +18,25 @@ interface WallhavenApiService {
     suspend fun getWallpaperDetails(
         @Path("id") id: String,
         @Query("apikey") apiKey: String
-    ): FavoritesManager.WallpaperDetailResponse
-} 
+    ): WallpaperDetailResponse
+}
+
+data class WallpaperDetailResponse(
+    val data: WallpaperDetail
+)
+
+data class WallpaperDetail(
+    val id: String,
+    val url: String,
+    val path: String,
+    val resolution: String,
+    val file_size: Int,
+    val colors: List<String>,
+    val thumbs: Thumbs
+)
+
+data class Thumbs(
+    val large: String,
+    val original: String,
+    val small: String
+) 

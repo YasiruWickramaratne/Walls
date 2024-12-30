@@ -1,6 +1,5 @@
 package com.example.walls
 
-
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -45,9 +44,9 @@ class FavoritesActivity : AppCompatActivity() {
                         url = detail.url,
                         path = detail.path,
                         thumbs = Thumbs(
-                            small = detail.thumbs.small,
+                            large = detail.thumbs.large,
                             original = detail.thumbs.original,
-                            large = detail.thumbs.large
+                            small = detail.thumbs.small
                         )
                     )
                 }

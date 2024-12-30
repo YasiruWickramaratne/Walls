@@ -3,6 +3,7 @@ package com.example.walls
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.walls.api.WallpaperDetail
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.delay
@@ -16,8 +17,8 @@ class WallpaperViewModel @Inject constructor(
     private val favoritesRepository: FavoritesRepository
 ) : ViewModel() {
 
-    private val _favoriteWallpapers = MutableStateFlow<List<FavoritesManager.WallpaperDetail>>(emptyList())
-    val favoriteWallpapers: StateFlow<List<FavoritesManager.WallpaperDetail>> = _favoriteWallpapers
+    private val _favoriteWallpapers = MutableStateFlow<List<WallpaperDetail>>(emptyList())
+    val favoriteWallpapers: StateFlow<List<WallpaperDetail>> = _favoriteWallpapers
 
     private val _favorites = MutableStateFlow<Set<String>>(setOf())
     val favorites: StateFlow<Set<String>> = _favorites

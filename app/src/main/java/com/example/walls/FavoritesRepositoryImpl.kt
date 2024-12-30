@@ -1,5 +1,6 @@
 package com.example.walls
 
+import com.example.walls.api.WallpaperDetail
 import javax.inject.Inject
 
 class FavoritesRepositoryImpl @Inject constructor(
@@ -18,7 +19,7 @@ class FavoritesRepositoryImpl @Inject constructor(
         return favoritesManager.isFavorite(id)
     }
 
-    override suspend fun fetchFavoriteWallpapers(apiKey: String): List<FavoritesManager.WallpaperDetail> {
+    override suspend fun fetchFavoriteWallpapers(apiKey: String): List<WallpaperDetail> {
         return favoritesManager.fetchFavoriteWallpapers(apiKey)
     }
 }

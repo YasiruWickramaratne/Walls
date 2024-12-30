@@ -3,25 +3,17 @@ package com.example.walls
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.lifecycle.MutableLiveData
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.GET
-import retrofit2.http.Path
-import retrofit2.http.Query
+import com.example.walls.api.WallhavenApiService
+import com.example.walls.api.WallpaperDetail
 import javax.inject.Inject
 
-class FavoritesManager @Inject constructor(context: Context) {
+class FavoritesManager @Inject constructor(
+    context: Context,
+    private val apiService: WallhavenApiService
+) {
     private val favoritesPreferences: SharedPreferences =
         context.getSharedPreferences("Favorites", Context.MODE_PRIVATE)
     private val _favorites = MutableLiveData<Set<String>>(setOf())
-
-    private val apiService: WallhavenApiService by lazy {
-        Retrofit.Builder()
-            .baseUrl("https://wallhaven.cc/api/v1/")
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(WallhavenApiService::class.java)
-    }
 
     init {
         _favorites.value = getFavorites()
@@ -60,32 +52,4 @@ class FavoritesManager @Inject constructor(context: Context) {
             }
         }
     }
-
-    interface WallhavenApiService {
-        @GET("w/{id}")
-        suspend fun getWallpaperDetails(
-            @Path("id") id: String,
-            @Query("apikey") apiKey: String
-        ): WallpaperDetailResponse
-    }
-
-    data class WallpaperDetailResponse(
-        val data: WallpaperDetail
-    )
-
-    data class WallpaperDetail(
-        val id: String,
-        val url: String,
-        val path: String,
-        val resolution: String,
-        val file_size: Int,
-        val colors: List<String>,
-        val thumbs: Thumbs
-    )
-
-    data class Thumbs(
-        val large: String,
-        val original: String,
-        val small: String
-    )
 }
