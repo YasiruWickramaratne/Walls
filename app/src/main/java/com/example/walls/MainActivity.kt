@@ -1,20 +1,20 @@
 package com.example.walls
 
 
-import FilterDialog
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.MenuItem
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.viewModels
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
@@ -22,9 +22,9 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.navigation.NavigationView
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -33,17 +33,16 @@ class MainActivity : AppCompatActivity(),
     @Inject
     lateinit var favoritesManager: FavoritesManager
     
+    private val viewModel: WallpaperViewModel by viewModels()
+    
     private lateinit var viewPager: ViewPager2
     private lateinit var tabLayout: TabLayout
-    private lateinit var viewModel: WallpaperViewModel
     private lateinit var drawerLayout: DrawerLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val factory = WallpaperViewModelFactory(application, favoritesManager)
-        viewModel = ViewModelProvider(this, factory)[WallpaperViewModel::class.java]
         Log.d("MainActivity", "onCreate called")
 
         // Set up the toolbar
@@ -144,34 +143,41 @@ class MainActivity : AppCompatActivity(),
     }
 
     private fun showFilterDialog() {
-        val filterDialog = FilterDialog(viewModel)
-        filterDialog.setOnFilterAppliedListener { categories, purity ->
-            onFilterApplied(categories, purity)
-        }
+        val filterDialog = FilterDialog()
         filterDialog.show(supportFragmentManager, "FilterDialog")
-    }
-
-    private fun onFilterApplied(categories: String, purity: String) {
-        Log.d("MainActivity", "Filter applied: categories=$categories, purity=$purity")
-        viewModel.updateFilters(categories, purity)
-        refreshCurrentFragment()
-    }
-
-    private fun refreshCurrentFragment() {
-        val currentItem = viewPager.currentItem
-        when (currentItem) {
-            0 -> viewModel.fetchWallpapers("date_added")
-            1 -> viewModel.fetchWallpapers("toplist")
-        }
     }
 
     private fun observeFilterChanges() {
         lifecycleScope.launch {
             viewModel.filterChanged.collectLatest { changed ->
+                Log.d("MainActivity", "Filter changed: $changed")
                 if (changed) {
+                    Log.d("MainActivity", "Refreshing current fragment")
                     refreshCurrentFragment()
                 }
             }
+        }
+
+        // Also observe the wallpaper lists
+        lifecycleScope.launch {
+            viewModel.recentWallpapers.collectLatest { wallpapers ->
+                Log.d("MainActivity", "Recent wallpapers updated: ${wallpapers.size} items")
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.topWallpapers.collectLatest { wallpapers ->
+                Log.d("MainActivity", "Top wallpapers updated: ${wallpapers.size} items")
+            }
+        }
+    }
+
+    private fun refreshCurrentFragment() {
+        val currentItem = viewPager.currentItem
+        Log.d("MainActivity", "Refreshing fragment at position: $currentItem")
+        when (currentItem) {
+            0 -> viewModel.fetchWallpapers("date_added")
+            1 -> viewModel.fetchWallpapers("toplist")
         }
     }
 }

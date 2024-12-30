@@ -2,21 +2,17 @@ package com.example.walls
 
 import android.content.Context
 import android.content.SharedPreferences
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
+import com.example.walls.api.WallhavenApiService
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 
-class WallpaperRepositoryImpl(private val context: Context) : WallpaperRepository {
+class WallpaperRepositoryImpl @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val apiService: WallhavenApiService
+) : WallpaperRepository {
 
     private val sharedPreferences: SharedPreferences by lazy {
         context.getSharedPreferences("WallsPrefs", Context.MODE_PRIVATE)
-    }
-
-    private val apiService: WallhavenApiService by lazy {
-        Retrofit.Builder()
-            .baseUrl("https://wallhaven.cc/api/v1/")
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(WallhavenApiService::class.java)
     }
 
     override suspend fun fetchWallpapers(

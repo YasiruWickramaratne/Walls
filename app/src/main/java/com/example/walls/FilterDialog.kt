@@ -1,18 +1,18 @@
+package com.example.walls
+
 import android.app.Dialog
 import android.os.Bundle
+import android.util.Log
 import android.widget.CheckBox
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
-import com.example.walls.R
-import com.example.walls.WallpaperViewModel
+import androidx.fragment.app.activityViewModels
+import dagger.hilt.android.AndroidEntryPoint
 
-class FilterDialog(private val viewModel: WallpaperViewModel) : DialogFragment() {
+@AndroidEntryPoint
+class FilterDialog : DialogFragment() {
 
-    private var onFilterApplied: ((categories: String, purity: String) -> Unit)? = null
-
-    fun setOnFilterAppliedListener(listener: (categories: String, purity: String) -> Unit) {
-        this.onFilterApplied = listener
-    }
+    private val viewModel: WallpaperViewModel by activityViewModels()
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val builder = AlertDialog.Builder(requireContext())
@@ -33,20 +33,19 @@ class FilterDialog(private val viewModel: WallpaperViewModel) : DialogFragment()
         val cbNsfw = view.findViewById<CheckBox>(R.id.cb_nsfw)
         val cbSelectAllPurity = view.findViewById<CheckBox>(R.id.cb_select_all_purity)
 
-        // Set initial checkbox states, restoring from savedInstanceState if available
-        cbGeneral.isChecked = savedInstanceState?.getBoolean("general", viewModel.isGeneralSelected()) ?: viewModel.isGeneralSelected()
-        cbAnime.isChecked = savedInstanceState?.getBoolean("anime", viewModel.isAnimeSelected()) ?: viewModel.isAnimeSelected()
-        cbPeople.isChecked = savedInstanceState?.getBoolean("people", viewModel.isPeopleSelected()) ?: viewModel.isPeopleSelected()
+        // Set initial checkbox states
+        cbGeneral.isChecked = viewModel.isGeneralSelected()
+        cbAnime.isChecked = viewModel.isAnimeSelected()
+        cbPeople.isChecked = viewModel.isPeopleSelected()
+        cbSfw.isChecked = viewModel.isSfwSelected()
+        cbSketchy.isChecked = viewModel.isSketchySelected()
+        cbNsfw.isChecked = viewModel.isNsfwSelected()
 
-        cbSfw.isChecked = savedInstanceState?.getBoolean("sfw", viewModel.isSfwSelected()) ?: viewModel.isSfwSelected()
-        cbSketchy.isChecked = savedInstanceState?.getBoolean("sketchy", viewModel.isSketchySelected()) ?: viewModel.isSketchySelected()
-        cbNsfw.isChecked = savedInstanceState?.getBoolean("nsfw", viewModel.isNsfwSelected()) ?: viewModel.isNsfwSelected()
-
-
-        // Update "Select All" checkboxes
-        cbSelectAllCategories.isChecked =
+        // Update "Select All" checkboxes initial state
+        cbSelectAllCategories.isChecked = 
             cbGeneral.isChecked && cbAnime.isChecked && cbPeople.isChecked
-        cbSelectAllPurity.isChecked = cbSfw.isChecked && cbSketchy.isChecked && cbNsfw.isChecked
+        cbSelectAllPurity.isChecked = 
+            cbSfw.isChecked && cbSketchy.isChecked && cbNsfw.isChecked
 
         // Set up "Select All" functionality for categories
         cbSelectAllCategories.setOnCheckedChangeListener { _, isChecked ->
@@ -69,26 +68,17 @@ class FilterDialog(private val viewModel: WallpaperViewModel) : DialogFragment()
                     cbAnime.isChecked,
                     cbPeople.isChecked
                 )
-                val purity =
-                    buildPurityString(cbSfw.isChecked, cbSketchy.isChecked, cbNsfw.isChecked)
-                onFilterApplied?.invoke(categories, purity)
+                val purity = buildPurityString(
+                    cbSfw.isChecked,
+                    cbSketchy.isChecked,
+                    cbNsfw.isChecked
+                )
+                Log.d("FilterDialog", "Applying filters: categories=$categories, purity=$purity")
+                viewModel.updateFilters(categories, purity)
             }
             .setNegativeButton("Cancel", null)
 
         return builder.create()
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        val view = dialog?.window?.decorView
-        view?.let {
-            outState.putBoolean("general", it.findViewById<CheckBox>(R.id.cb_general).isChecked)
-            outState.putBoolean("anime", it.findViewById<CheckBox>(R.id.cb_anime).isChecked)
-            outState.putBoolean("people", it.findViewById<CheckBox>(R.id.cb_people).isChecked)
-            outState.putBoolean("sfw", it.findViewById<CheckBox>(R.id.cb_sfw).isChecked)
-            outState.putBoolean("sketchy", it.findViewById<CheckBox>(R.id.cb_sketchy).isChecked)
-            outState.putBoolean("nsfw", it.findViewById<CheckBox>(R.id.cb_nsfw).isChecked)
-        }
     }
 
     private fun buildCategoriesString(general: Boolean, anime: Boolean, people: Boolean): String {

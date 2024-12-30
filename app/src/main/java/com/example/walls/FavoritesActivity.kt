@@ -1,33 +1,31 @@
 package com.example.walls
 
-import WallpaperAdapter
+
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.walls.databinding.ActivityFavoritesBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class FavoritesActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityFavoritesBinding
-    private lateinit var viewModel: WallpaperViewModel
+    private val viewModel: WallpaperViewModel by viewModels()
     private lateinit var adapter: WallpaperAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityFavoritesBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        val favoritesManager = FavoritesManager(application)
-        val factory = WallpaperViewModelFactory(application, favoritesManager)
-        viewModel = ViewModelProvider(this, factory)[WallpaperViewModel::class.java]
 
         adapter = WallpaperAdapter { wallpaper ->
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(wallpaper.url))

@@ -3,15 +3,14 @@ package com.example.walls
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.lifecycle.MutableLiveData
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
+import javax.inject.Inject
 
-class FavoritesManager(context: Context) {
+class FavoritesManager @Inject constructor(context: Context) {
     private val favoritesPreferences: SharedPreferences =
         context.getSharedPreferences("Favorites", Context.MODE_PRIVATE)
     private val _favorites = MutableLiveData<Set<String>>(setOf())
@@ -25,41 +24,39 @@ class FavoritesManager(context: Context) {
     }
 
     init {
-        loadFavorites()
+        _favorites.value = getFavorites()
     }
 
     fun toggleFavorite(id: String) {
-        val currentFavorites = _favorites.value?.toMutableSet() ?: mutableSetOf()
+        val currentFavorites = getFavorites().toMutableSet()
         if (currentFavorites.contains(id)) {
             currentFavorites.remove(id)
         } else {
             currentFavorites.add(id)
         }
-        _favorites.value = currentFavorites
         saveFavorites(currentFavorites)
+        _favorites.value = currentFavorites
     }
 
-    fun isFavorite(id: String): Boolean {
-        return _favorites.value?.contains(id) ?: false
+    fun getFavorites(): Set<String> {
+        return favoritesPreferences.getStringSet("favorite_ids", setOf()) ?: setOf()
     }
 
     private fun saveFavorites(favorites: Set<String>) {
         favoritesPreferences.edit().putStringSet("favorite_ids", favorites).apply()
     }
 
-    private fun loadFavorites() {
-        _favorites.value = favoritesPreferences.getStringSet("favorite_ids", setOf()) ?: setOf()
+    fun isFavorite(id: String): Boolean {
+        return getFavorites().contains(id)
     }
 
     suspend fun fetchFavoriteWallpapers(apiKey: String): List<WallpaperDetail> {
-        return withContext(Dispatchers.IO) {
-            val favoriteIds = _favorites.value ?: setOf()
-            favoriteIds.mapNotNull { id ->
-                try {
-                    apiService.getWallpaperDetails(id, apiKey).data
-                } catch (e: Exception) {
-                    null
-                }
+        val favorites = getFavorites()
+        return favorites.mapNotNull { id ->
+            try {
+                apiService.getWallpaperDetails(id, apiKey).data
+            } catch (e: Exception) {
+                null
             }
         }
     }

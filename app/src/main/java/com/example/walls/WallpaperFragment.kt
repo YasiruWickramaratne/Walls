@@ -1,6 +1,5 @@
 package com.example.walls
 
-import WallpaperAdapter
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -10,14 +9,18 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import android.content.Intent
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import javax.inject.Inject
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class WallpaperFragment : Fragment(), FilterUpdateListener {
-    private lateinit var viewModel: WallpaperViewModel
+    private val viewModel: WallpaperViewModel by activityViewModels()
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: WallpaperAdapter
 
@@ -51,7 +54,6 @@ class WallpaperFragment : Fragment(), FilterUpdateListener {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        viewModel = ViewModelProvider(requireActivity())[WallpaperViewModel::class.java]
         adapter = WallpaperAdapter { wallpaper ->
             openFullScreenImage(wallpaper)
         }
@@ -60,22 +62,15 @@ class WallpaperFragment : Fragment(), FilterUpdateListener {
         recyclerView.layoutManager = GridLayoutManager(context, 2)
         recyclerView.adapter = adapter
 
-        observeWallpapers()
-        fetchWallpapers()
-    }
-
-    private fun fetchWallpapers() {
-        viewModel.fetchWallpapers(sorting)
-    }
-
-    private fun observeWallpapers() {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             if (isRecentTab) {
                 viewModel.recentWallpapers.collectLatest { wallpapers ->
+                    Log.d("WallpaperFragment", "Updating recent wallpapers: ${wallpapers.size} items")
                     updateWallpapers(wallpapers)
                 }
             } else {
                 viewModel.topWallpapers.collectLatest { wallpapers ->
+                    Log.d("WallpaperFragment", "Updating top wallpapers: ${wallpapers.size} items")
                     updateWallpapers(wallpapers)
                 }
             }
@@ -83,6 +78,7 @@ class WallpaperFragment : Fragment(), FilterUpdateListener {
     }
 
     private fun updateWallpapers(wallpapers: List<Wallpaper>) {
+        Log.d("WallpaperFragment", "Submitting ${wallpapers.size} wallpapers to adapter")
         adapter.submitList(wallpapers)
     }
 

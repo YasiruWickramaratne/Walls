@@ -1,27 +1,26 @@
 package com.example.walls
 
-
-import android.app.Application
 import android.util.Log
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import retrofit2.http.GET
-import retrofit2.http.Query
 
-class WallpaperViewModel(
-    application: Application,
+@HiltViewModel
+class WallpaperViewModel @Inject constructor(
     private val wallpaperRepository: WallpaperRepository,
     private val favoritesRepository: FavoritesRepository
-) : AndroidViewModel(application) {
+) : ViewModel() {
 
     private val _favoriteWallpapers = MutableStateFlow<List<FavoritesManager.WallpaperDetail>>(emptyList())
     val favoriteWallpapers: StateFlow<List<FavoritesManager.WallpaperDetail>> = _favoriteWallpapers
 
     private val _favorites = MutableStateFlow<Set<String>>(setOf())
+    val favorites: StateFlow<Set<String>> = _favorites
 
     init {
         loadFavorites()
@@ -44,15 +43,22 @@ class WallpaperViewModel(
     val filterChanged: StateFlow<Boolean> = _filterChanged
 
     private fun loadFavorites() {
-        _favorites.value = favoritesRepository.loadFavorites()
-    }
-
-    fun toggleFavorite(id: String) {
-        favoritesRepository.toggleFavorite(id)
+        viewModelScope.launch {
+            _favorites.value = favoritesRepository.loadFavorites()
+        }
     }
 
     fun isFavorite(id: String): Boolean {
-        return favoritesRepository.isFavorite(id)
+        return _favorites.value.contains(id)
+    }
+
+    fun toggleFavorite(id: String) {
+        viewModelScope.launch {
+            favoritesRepository.toggleFavorite(id)
+            // Update the favorites state after toggling
+            _favorites.value = favoritesRepository.loadFavorites()
+            Log.d("WallpaperViewModel", "Favorite toggled for $id, new favorites: ${_favorites.value}")
+        }
     }
 
     var currentCategories: String
@@ -70,6 +76,8 @@ class WallpaperViewModel(
     fun fetchWallpapers(sorting: String) {
         viewModelScope.launch {
             try {
+                Log.d("WallpaperViewModel", "Fetching wallpapers for sorting: $sorting")
+                
                 val currentTime = System.currentTimeMillis()
                 if (currentTime - lastApiCallTime < apiCallCoolDown) {
                     delay(apiCallCoolDown - (currentTime - lastApiCallTime))
@@ -77,15 +85,7 @@ class WallpaperViewModel(
                 lastApiCallTime = System.currentTimeMillis()
 
                 val apiKey = wallpaperRepository.getApiKey()
-                if (apiKey.isBlank()) {
-                    Log.e("WallpaperViewModel", "API key is blank or null")
-                }
-
-                Log.d(
-                    "WallpaperViewModel",
-                    "Making API call with sorting: $sorting, categories: $currentCategories, purity: $currentPurity, API Key: $apiKey"
-                )
-
+                
                 val wallpapers = wallpaperRepository.fetchWallpapers(
                     apiKey = apiKey,
                     sorting = sorting,
@@ -93,29 +93,23 @@ class WallpaperViewModel(
                     purity = currentPurity
                 )
 
+                Log.d("WallpaperViewModel", "Received ${wallpapers.size} wallpapers for $sorting")
+
                 when (sorting) {
                     "date_added" -> {
                         _recentWallpapers.value = wallpapers
-                        Log.d(
-                            "WallpaperViewModel",
-                            "Updated recent wallpapers, count: ${wallpapers.size}"
-                        )
+                        Log.d("WallpaperViewModel", "Updated recent wallpapers")
                     }
-
                     "toplist" -> {
                         _topWallpapers.value = wallpapers
-                        Log.d(
-                            "WallpaperViewModel",
-                            "Updated top wallpapers, count: ${wallpapers.size}"
-                        )
-                    }
-
-                    else -> {
-                        Log.w("WallpaperViewModel", "Unknown sorting type: $sorting")
+                        Log.d("WallpaperViewModel", "Updated top wallpapers")
                     }
                 }
 
-                _filterChanged.value = false
+                // Only set filterChanged to false after both fetches are complete
+                if (sorting == "toplist") {
+                    _filterChanged.value = false
+                }
             } catch (e: Exception) {
                 Log.e("WallpaperViewModel", "Error fetching wallpapers", e)
             }
@@ -123,10 +117,20 @@ class WallpaperViewModel(
     }
 
     fun updateFilters(categories: String, purity: String) {
-        currentCategories = categories
-        currentPurity = purity
-        wallpaperRepository.saveFilterSettings(categories, purity)
-        _filterChanged.value = true
+        viewModelScope.launch {
+            Log.d("WallpaperViewModel", "Updating filters: categories=$categories, purity=$purity")
+            currentCategories = categories
+            currentPurity = purity
+            wallpaperRepository.saveFilterSettings(categories, purity)
+            
+            // Set filter changed before fetching
+            _filterChanged.value = true
+            
+            // Fetch both types of wallpapers
+            Log.d("WallpaperViewModel", "Fetching wallpapers with new filters")
+            fetchWallpapers("date_added")
+            fetchWallpapers("toplist")
+        }
     }
 
     fun isGeneralSelected() = currentCategories[0] == '1'
@@ -136,16 +140,6 @@ class WallpaperViewModel(
     fun isSfwSelected() = currentPurity[0] == '1'
     fun isSketchySelected() = currentPurity[1] == '1'
     fun isNsfwSelected() = currentPurity[2] == '1'
-}
-
-interface WallhavenApiService {
-    @GET("search")
-    suspend fun searchWallpapers(
-        @Query("apikey") apiKey: String?,
-        @Query("sorting") sorting: String,
-        @Query("categories") categories: String,
-        @Query("purity") purity: String
-    ): WallpaperResponse
 }
 
 data class WallpaperResponse(

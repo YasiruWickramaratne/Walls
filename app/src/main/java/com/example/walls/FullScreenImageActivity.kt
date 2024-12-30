@@ -5,9 +5,9 @@ import android.app.WallpaperManager
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
@@ -17,10 +17,14 @@ import com.example.walls.databinding.ActivityFullScreenImageBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.activity.viewModels
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collectLatest
 
+@AndroidEntryPoint
 class FullScreenImageActivity : AppCompatActivity() {
     private lateinit var binding: ActivityFullScreenImageBinding
-    private lateinit var viewModel: WallpaperViewModel
+    private val viewModel: WallpaperViewModel by viewModels()
     private var currentWallpaperId: String? = null
     private var currentWallpaperUrl: String? = null
 
@@ -28,11 +32,6 @@ class FullScreenImageActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityFullScreenImageBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        // Initialize ViewModel
-        val favoritesManager = FavoritesManager(application)
-        val factory = WallpaperViewModelFactory(application, favoritesManager)
-        viewModel = ViewModelProvider(this, factory)[WallpaperViewModel::class.java]
 
         currentWallpaperId = intent.getStringExtra("WALLPAPER_ID")
         currentWallpaperUrl = intent.getStringExtra("IMAGE_URL")
@@ -46,6 +45,7 @@ class FullScreenImageActivity : AppCompatActivity() {
         setupViews()
         loadImage()
         setupFavoriteButton()
+        observeFavorites()
     }
 
     private fun setupViews() {
@@ -82,16 +82,26 @@ class FullScreenImageActivity : AppCompatActivity() {
 
     private fun setupFavoriteButton() {
         currentWallpaperId?.let { id ->
-            val isFavorite = viewModel.isFavorite(id)
-            updateFavoriteButtonState(isFavorite)
+            updateFavoriteButtonState(viewModel.isFavorite(id))
             binding.favoriteButton.setOnClickListener {
                 viewModel.toggleFavorite(id)
-                updateFavoriteButtonState(!isFavorite)
+            }
+        }
+    }
+
+    private fun observeFavorites() {
+        lifecycleScope.launch {
+            viewModel.favorites.collectLatest { favorites ->
+                currentWallpaperId?.let { id ->
+                    Log.d("FullScreenImageActivity", "Favorites updated: $favorites, current id: $id")
+                    updateFavoriteButtonState(favorites.contains(id))
+                }
             }
         }
     }
 
     private fun updateFavoriteButtonState(isFavorite: Boolean) {
+        Log.d("FullScreenImageActivity", "Updating favorite button state: $isFavorite")
         binding.favoriteButton.setImageResource(
             if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_border
         )

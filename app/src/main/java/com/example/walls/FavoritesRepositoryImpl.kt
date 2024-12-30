@@ -1,30 +1,24 @@
 package com.example.walls
 
-import android.content.Context
-import android.content.SharedPreferences
+import javax.inject.Inject
 
-class FavoritesRepositoryImpl(
-    private val context: Context,
+class FavoritesRepositoryImpl @Inject constructor(
     private val favoritesManager: FavoritesManager
 ) : FavoritesRepository {
-
-    private val favoritesPreferences: SharedPreferences by lazy {
-        context.getSharedPreferences("Favorites", Context.MODE_PRIVATE)
-    }
-
-    override suspend fun fetchFavoriteWallpapers(apiKey: String): List<FavoritesManager.WallpaperDetail> {
-        return favoritesManager.fetchFavoriteWallpapers(apiKey)
-    }
 
     override fun toggleFavorite(id: String) {
         favoritesManager.toggleFavorite(id)
     }
 
     override fun loadFavorites(): Set<String> {
-        return favoritesPreferences.getStringSet("favorite_ids", setOf()) ?: setOf()
+        return favoritesManager.getFavorites()
     }
 
     override fun isFavorite(id: String): Boolean {
         return favoritesManager.isFavorite(id)
+    }
+
+    override suspend fun fetchFavoriteWallpapers(apiKey: String): List<FavoritesManager.WallpaperDetail> {
+        return favoritesManager.fetchFavoriteWallpapers(apiKey)
     }
 }
