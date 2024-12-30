@@ -3,13 +3,10 @@ package com.example.walls
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.lifecycle.MutableLiveData
-import com.example.walls.api.WallhavenApiService
-import com.example.walls.api.WallpaperDetail
 import javax.inject.Inject
 
 class FavoritesManager @Inject constructor(
-    context: Context,
-    private val apiService: WallhavenApiService
+    context: Context
 ) {
     private val favoritesPreferences: SharedPreferences =
         context.getSharedPreferences("Favorites", Context.MODE_PRIVATE)
@@ -40,16 +37,5 @@ class FavoritesManager @Inject constructor(
 
     fun isFavorite(id: String): Boolean {
         return getFavorites().contains(id)
-    }
-
-    suspend fun fetchFavoriteWallpapers(apiKey: String): List<WallpaperDetail> {
-        val favorites = getFavorites()
-        return favorites.mapNotNull { id ->
-            try {
-                apiService.getWallpaperDetails(id, apiKey).data
-            } catch (e: Exception) {
-                null
-            }
-        }
     }
 }

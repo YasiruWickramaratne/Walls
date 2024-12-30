@@ -2,7 +2,12 @@ package com.example.walls.di
 
 import android.content.Context
 import com.example.walls.FavoritesManager
+import com.example.walls.FavoritesRepository
+import com.example.walls.FavoritesRepositoryImpl
+import com.example.walls.WallpaperRepository
+import com.example.walls.WallpaperRepositoryImpl
 import com.example.walls.api.WallhavenApiService
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,6 +20,14 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class AppModule {
+
+    @Singleton
+    @Binds
+    abstract fun bindWallpaperRepository(wallpaperRepositoryImpl: WallpaperRepositoryImpl): WallpaperRepository
+
+    @Singleton
+    @Binds
+    abstract fun bindFavoritesRepository(favoritesRepositoryImpl: FavoritesRepositoryImpl): FavoritesRepository
 
     companion object {
         @Provides
@@ -29,8 +42,8 @@ abstract class AppModule {
 
         @Provides
         @Singleton
-        fun provideFavoritesManager(@ApplicationContext context: Context, apiService: WallhavenApiService): FavoritesManager {
-            return FavoritesManager(context, apiService)
+        fun provideFavoritesManager(@ApplicationContext context: Context): FavoritesManager {
+            return FavoritesManager(context)
         }
     }
 } 
