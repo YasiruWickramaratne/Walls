@@ -70,24 +70,49 @@ class WallpaperViewModel @Inject constructor(
         currentPurity = purity
     }
 
-    // Add page tracking
-    private var currentRecentPage = 1
-    private var currentTopPage = 1
+    // Separate loading states for each tab
     private var isRecentLoading = false
     private var isTopLoading = false
     private var hasRecentMorePages = true
     private var hasTopMorePages = true
+    private var currentRecentPage = 1
+    private var currentTopPage = 1
+
+    // Cache the responses
+    private var cachedRecentWallpapers = mutableListOf<Wallpaper>()
+    private var cachedTopWallpapers = mutableListOf<Wallpaper>()
+    
+    private var isReturningFromFullScreen = false
 
     fun fetchWallpapers(sorting: String, isLoadingMore: Boolean = false) {
         val isRecent = sorting == "date_added"
-        val currentPage = if (isRecent) currentRecentPage else currentTopPage
         
+        // Don't fetch if we're just returning from FullScreenImageActivity
+        if (isReturningFromFullScreen) {
+            isReturningFromFullScreen = false
+            return
+        }
+
+        // Don't fetch if already loading or no more pages
         if ((isRecent && isRecentLoading) || (!isRecent && isTopLoading)) return
         if ((isRecent && !hasRecentMorePages) || (!isRecent && !hasTopMorePages)) return
+
+        // If not loading more and we have cached data, use it
+        if (!isLoadingMore) {
+            if (isRecent && cachedRecentWallpapers.isNotEmpty()) {
+                _recentWallpapers.value = cachedRecentWallpapers
+                return
+            } else if (!isRecent && cachedTopWallpapers.isNotEmpty()) {
+                _topWallpapers.value = cachedTopWallpapers
+                return
+            }
+        }
 
         viewModelScope.launch {
             try {
                 if (isRecent) isRecentLoading = true else isTopLoading = true
+                
+                val currentPage = if (isRecent) currentRecentPage else currentTopPage
                 
                 val response = wallpaperRepository.fetchWallpapers(
                     apiKey = wallpaperRepository.getApiKey(),
@@ -97,21 +122,21 @@ class WallpaperViewModel @Inject constructor(
                     page = currentPage
                 )
 
-                // Update the appropriate list
+                // Update the appropriate list and cache
                 if (isRecent) {
-                    _recentWallpapers.value = if (isLoadingMore) {
-                        _recentWallpapers.value + response.data
-                    } else {
-                        response.data
+                    if (!isLoadingMore) {
+                        cachedRecentWallpapers.clear()
                     }
+                    cachedRecentWallpapers.addAll(response.data)
+                    _recentWallpapers.value = cachedRecentWallpapers.toList()
                     currentRecentPage++
                     hasRecentMorePages = response.meta.current_page < response.meta.last_page
                 } else {
-                    _topWallpapers.value = if (isLoadingMore) {
-                        _topWallpapers.value + response.data
-                    } else {
-                        response.data
+                    if (!isLoadingMore) {
+                        cachedTopWallpapers.clear()
                     }
+                    cachedTopWallpapers.addAll(response.data)
+                    _topWallpapers.value = cachedTopWallpapers.toList()
                     currentTopPage++
                     hasTopMorePages = response.meta.current_page < response.meta.last_page
                 }
@@ -153,8 +178,14 @@ class WallpaperViewModel @Inject constructor(
         currentTopPage = 1
         hasRecentMorePages = true
         hasTopMorePages = true
+        cachedRecentWallpapers.clear()
+        cachedTopWallpapers.clear()
         _recentWallpapers.value = emptyList()
         _topWallpapers.value = emptyList()
+    }
+
+    fun setReturningFromFullScreen() {
+        isReturningFromFullScreen = true
     }
 }
 

@@ -134,6 +134,7 @@ class MainActivity : AppCompatActivity(),
 
     override fun onResume() {
         super.onResume()
+        viewModel.setReturningFromFullScreen()
         val sharedPreferences = getSharedPreferences("WallsPrefs", Context.MODE_PRIVATE)
         val apiKey = sharedPreferences.getString("API_KEY", null)
         //Log.d("MainActivity", "Current API key: $apiKey")

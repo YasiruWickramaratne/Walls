@@ -2,7 +2,6 @@ package com.example.walls
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -21,6 +20,9 @@ class WallpaperFragment : Fragment(), FilterUpdateListener {
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: WallpaperAdapter
     private lateinit var layoutManager: GridLayoutManager
+    
+    // Add variables to store scroll position
+    private var lastFirstVisiblePosition = 0
 
     private val isRecentTab: Boolean by lazy { arguments?.getBoolean(ARG_IS_RECENT_TAB) ?: true }
     private val sorting: String by lazy { arguments?.getString(ARG_SORTING) ?: "date_added" }
@@ -33,22 +35,57 @@ class WallpaperFragment : Fragment(), FilterUpdateListener {
         return inflater.inflate(R.layout.fragment_wallpaper, container, false)
     }
 
-    override fun onFilterUpdated(categories: String, purity: String) {
-        viewModel.resetPagination()
-        viewModel.fetchWallpapers(sorting)
+    override fun onPause() {
+        super.onPause()
+        // Save scroll position when leaving the fragment
+        lastFirstVisiblePosition = layoutManager.findFirstVisibleItemPosition()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Restore scroll position when returning to the fragment
+        if (lastFirstVisiblePosition > 0) {
+            recyclerView.scrollToPosition(lastFirstVisiblePosition)
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
+        
+        // Initialize recyclerView first
+        recyclerView = view.findViewById(R.id.recyclerView)
+        
+        // Then initialize layoutManager and setup recyclerView
+        layoutManager = GridLayoutManager(context, 2)
+        recyclerView.layoutManager = layoutManager
+        
         adapter = WallpaperAdapter { wallpaper ->
             openFullScreenImage(wallpaper)
         }
-
-        recyclerView = view.findViewById(R.id.recyclerView)
-        layoutManager = GridLayoutManager(context, 2)
-        recyclerView.layoutManager = layoutManager
         recyclerView.adapter = adapter
+
+        // Collect wallpapers without clearing the list
+        viewLifecycleOwner.lifecycleScope.launch {
+            if (isRecentTab) {
+                viewModel.recentWallpapers.collectLatest { wallpapers ->
+                    adapter.submitList(wallpapers) {
+                        // Restore position after list update if needed
+                        if (lastFirstVisiblePosition > 0) {
+                            recyclerView.scrollToPosition(lastFirstVisiblePosition)
+                        }
+                    }
+                }
+            } else {
+                viewModel.topWallpapers.collectLatest { wallpapers ->
+                    adapter.submitList(wallpapers) {
+                        // Restore position after list update if needed
+                        if (lastFirstVisiblePosition > 0) {
+                            recyclerView.scrollToPosition(lastFirstVisiblePosition)
+                        }
+                    }
+                }
+            }
+        }
 
         // Add scroll listener for pagination
         recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -59,6 +96,9 @@ class WallpaperFragment : Fragment(), FilterUpdateListener {
                 val totalItemCount = layoutManager.itemCount
                 val firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition()
 
+                // Update last known position while scrolling
+                lastFirstVisiblePosition = firstVisibleItemPosition
+
                 // Check if we need to load more items
                 if ((visibleItemCount + firstVisibleItemPosition) >= totalItemCount - 5
                     && firstVisibleItemPosition >= 0) {
@@ -66,25 +106,13 @@ class WallpaperFragment : Fragment(), FilterUpdateListener {
                 }
             }
         })
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            if (isRecentTab) {
-                viewModel.recentWallpapers.collectLatest { wallpapers ->
-                    Log.d("WallpaperFragment", "Updating recent wallpapers: ${wallpapers.size} items")
-                    updateWallpapers(wallpapers)
-                }
-            } else {
-                viewModel.topWallpapers.collectLatest { wallpapers ->
-                    Log.d("WallpaperFragment", "Updating top wallpapers: ${wallpapers.size} items")
-                    updateWallpapers(wallpapers)
-                }
-            }
-        }
     }
 
-    private fun updateWallpapers(wallpapers: List<Wallpaper>) {
-        Log.d("WallpaperFragment", "Submitting ${wallpapers.size} wallpapers to adapter")
-        adapter.submitList(wallpapers)
+    override fun onFilterUpdated(categories: String, purity: String) {
+        // Reset scroll position when filters change
+        lastFirstVisiblePosition = 0
+        viewModel.resetPagination()
+        viewModel.fetchWallpapers(sorting)
     }
 
     private fun openFullScreenImage(wallpaper: Wallpaper) {
