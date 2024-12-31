@@ -87,6 +87,17 @@ class WallpaperViewModel @Inject constructor(
     fun fetchWallpapers(sorting: String, isLoadingMore: Boolean = false) {
         val isRecent = sorting == "date_added"
         
+        // Only skip if returning from FullScreen AND not applying filters
+        if (isReturningFromFullScreen && !_filterChanged.value) {
+            isReturningFromFullScreen = false
+            return
+        }
+
+        // Reset the filter changed flag after starting the fetch
+        if (_filterChanged.value) {
+            _filterChanged.value = false
+        }
+
         // Don't fetch if we're just returning from FullScreenImageActivity
         if (isReturningFromFullScreen) {
             isReturningFromFullScreen = false
@@ -155,10 +166,13 @@ class WallpaperViewModel @Inject constructor(
             currentPurity = purity
             wallpaperRepository.saveFilterSettings(categories, purity)
             
-            // Set filter changed before fetching
+            // Clear caches and reset pagination
+            resetPagination()
+            
+            // Set filter changed flag
             _filterChanged.value = true
             
-            // Fetch both types of wallpapers
+            // Fetch both types of wallpapers with new filters
             Log.d("WallpaperViewModel", "Fetching wallpapers with new filters")
             fetchWallpapers("date_added")
             fetchWallpapers("toplist")
