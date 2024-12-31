@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
+    implementation(libs.androidx.hilt.common)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -71,10 +72,18 @@ dependencies {
     implementation(libs.androidx.viewpager2)
     implementation(libs.subsampling.scale.image.view)
 
+
+
+    ksp(libs.androidx.room.compiler) // Add this line
+    implementation(libs.hilt.work)
+    implementation(libs.android.image.cropper)
+
+
+    ksp(libs.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
-    ksp(libs.androidx.room.compiler) // Add this line
-    //noinspection UseTomlInstead
-    implementation("com.vanniktech:android-image-cropper:4.6.0")
+    implementation(libs.androidx.work.runtime.ktx)
+
 
 }

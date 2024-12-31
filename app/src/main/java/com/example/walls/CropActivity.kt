@@ -163,14 +163,33 @@ class CropActivity : AppCompatActivity() {
     private fun saveCropRect() {
         currentWallpaperId?.let { id ->
             val cropRect = binding.cropImageView.cropRect
+            val imageWidth = binding.cropImageView.wholeImageRect?.width() ?: 0
+            val imageHeight = binding.cropImageView.wholeImageRect?.height() ?: 0
+            
             Log.d("CropActivity", "Saving crop rect for ID: $id, Rect = $cropRect")
+            Log.d("CropActivity", "Original image dimensions: ${imageWidth}x${imageHeight}")
+            
             if (cropRect != null) {
-                getPreferences(Context.MODE_PRIVATE).edit()
-                    .putInt("crop_rect_left_$id", cropRect.left)
-                    .putInt("crop_rect_top_$id", cropRect.top)
-                    .putInt("crop_rect_right_$id", cropRect.right)
-                    .putInt("crop_rect_bottom_$id", cropRect.bottom)
-                    .apply()
+                // Save both crop rect and relative percentages
+                getSharedPreferences("WallsPrefs", Context.MODE_PRIVATE).edit().apply {
+                    // Save absolute coordinates
+                    putInt("crop_rect_left_$id", cropRect.left)
+                    putInt("crop_rect_top_$id", cropRect.top)
+                    putInt("crop_rect_right_$id", cropRect.right)
+                    putInt("crop_rect_bottom_$id", cropRect.bottom)
+                    
+                    // Save relative percentages
+                    putFloat("crop_rect_left_percent_$id", cropRect.left.toFloat() / imageWidth)
+                    putFloat("crop_rect_top_percent_$id", cropRect.top.toFloat() / imageHeight)
+                    putFloat("crop_rect_right_percent_$id", cropRect.right.toFloat() / imageWidth)
+                    putFloat("crop_rect_bottom_percent_$id", cropRect.bottom.toFloat() / imageHeight)
+                    
+                    // Save original dimensions
+                    putInt("original_width_$id", imageWidth)
+                    putInt("original_height_$id", imageHeight)
+                    
+                    apply()
+                }
             }
         }
     }
@@ -178,10 +197,11 @@ class CropActivity : AppCompatActivity() {
     private fun loadSavedCropRect() {
         currentWallpaperId?.let { id ->
             Log.d("CropActivity", "Loading saved crop rect for ID: $id")
-            val savedLeft = getPreferences(Context.MODE_PRIVATE).getInt("crop_rect_left_$id", 0)
-            val savedTop = getPreferences(Context.MODE_PRIVATE).getInt("crop_rect_top_$id", 0)
-            val savedRight = getPreferences(Context.MODE_PRIVATE).getInt("crop_rect_right_$id", 0)
-            val savedBottom = getPreferences(Context.MODE_PRIVATE).getInt("crop_rect_bottom_$id", 0)
+            val prefs = getSharedPreferences("WallsPrefs", Context.MODE_PRIVATE)
+            val savedLeft = prefs.getInt("crop_rect_left_$id", 0)
+            val savedTop = prefs.getInt("crop_rect_top_$id", 0)
+            val savedRight = prefs.getInt("crop_rect_right_$id", 0)
+            val savedBottom = prefs.getInt("crop_rect_bottom_$id", 0)
 
             Log.d("CropActivity", "Loaded crop rect values: left=$savedLeft, top=$savedTop, right=$savedRight, bottom=$savedBottom")
 

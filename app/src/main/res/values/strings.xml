@@ -27,4 +27,8 @@
     <string name="favorites">Favorites</string>
     <string name="walls_app">Walls App</string>
     <string name="save_crop">Save Crop</string>
+    <string name="title_activity_settings">Settings</string>
+    <string name="previous">Previous</string>
+    <string name="next">Next</string>
+    <string name="lorem_ipsum">…</string>
 </resources>
