@@ -2,8 +2,9 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    id("kotlin-kapt")
     id("com.google.dagger.hilt.android")
+    id("com.google.devtools.ksp")
+
 }
 
 android {
@@ -66,14 +67,12 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.glide)
-    annotationProcessor(libs.compiler)
+    ksp(libs.compiler)
     implementation(libs.androidx.viewpager2)
     implementation(libs.subsampling.scale.image.view)
 
     implementation(libs.hilt.android)
-    kapt(libs.hilt.android.compiler)
-}
+    ksp(libs.hilt.android.compiler)
+    ksp(libs.androidx.room.compiler) // Add this line
 
-kapt {
-    correctErrorTypes = true
 }
