@@ -1,6 +1,8 @@
 package com.example.walls
 
+import android.content.Context
 import android.graphics.BitmapFactory
+import android.graphics.Rect
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -42,6 +44,8 @@ class CropActivity : AppCompatActivity() {
         currentWallpaperId = intent.getStringExtra("WALLPAPER_ID")
         currentWallpaperUrl = intent.getStringExtra("IMAGE_URL")
 
+        Log.d("CropActivity", "onCreate: WALLPAPER_ID = $currentWallpaperId")
+
         setupFavoriteButton()
         setupBackButton()
 
@@ -49,12 +53,12 @@ class CropActivity : AppCompatActivity() {
         binding.cropImageView.setOnCropImageCompleteListener { _, result ->
             val croppedUri = result.uriContent
             Log.d("CropActivity", "Cropped image URI: $croppedUri")
-            // Handle the cropped image URI, e.g., save it or set it as wallpaper
-            //setWallpaper(croppedUri)
+            Toast.makeText(this@CropActivity, "Cropped image saved!", Toast.LENGTH_SHORT).show()
+            saveCropRect() // Save the crop rect after a successful crop
         }
 
         loadWallpaperDetails()
-        setupViews() // Keep this after setting the listener
+        setupViews()
     }
 
     private fun setupBackButton() {
@@ -103,6 +107,7 @@ class CropActivity : AppCompatActivity() {
                         withContext(Dispatchers.Main) {
                             if (bitmap != null) {
                                 binding.cropImageView.setImageBitmap(bitmap)
+                                loadSavedCropRect() // Call loadSavedCropRect() after setting the bitmap
                             } else {
                                 Log.e("CropActivity", "loadImageToCropView: Decoded Bitmap is null")
                                 Toast.makeText(this@CropActivity, "Error loading image: Could not decode", Toast.LENGTH_SHORT).show()
@@ -153,6 +158,43 @@ class CropActivity : AppCompatActivity() {
         binding.favoriteButton.setImageResource(
             if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_border
         )
+    }
+
+    private fun saveCropRect() {
+        currentWallpaperId?.let { id ->
+            val cropRect = binding.cropImageView.cropRect
+            Log.d("CropActivity", "Saving crop rect for ID: $id, Rect = $cropRect")
+            if (cropRect != null) {
+                getPreferences(Context.MODE_PRIVATE).edit()
+                    .putInt("crop_rect_left_$id", cropRect.left)
+                    .putInt("crop_rect_top_$id", cropRect.top)
+                    .putInt("crop_rect_right_$id", cropRect.right)
+                    .putInt("crop_rect_bottom_$id", cropRect.bottom)
+                    .apply()
+            }
+        }
+    }
+
+    private fun loadSavedCropRect() {
+        currentWallpaperId?.let { id ->
+            Log.d("CropActivity", "Loading saved crop rect for ID: $id")
+            val savedLeft = getPreferences(Context.MODE_PRIVATE).getInt("crop_rect_left_$id", 0)
+            val savedTop = getPreferences(Context.MODE_PRIVATE).getInt("crop_rect_top_$id", 0)
+            val savedRight = getPreferences(Context.MODE_PRIVATE).getInt("crop_rect_right_$id", 0)
+            val savedBottom = getPreferences(Context.MODE_PRIVATE).getInt("crop_rect_bottom_$id", 0)
+
+            Log.d("CropActivity", "Loaded crop rect values: left=$savedLeft, top=$savedTop, right=$savedRight, bottom=$savedBottom")
+
+            if (savedLeft != 0 || savedTop != 0 || savedRight != 0 || savedBottom != 0) {
+                val savedRect = Rect(savedLeft, savedTop, savedRight, savedBottom)
+                Log.d("CropActivity", "Setting crop rect from saved values for ID: $id, Rect = $savedRect")
+                binding.cropImageView.cropRect = savedRect
+
+                Log.d("CropActivity", "Crop rect set on ImageView: ${binding.cropImageView.cropRect}")
+            } else {
+                Log.d("CropActivity", "No saved crop rect found or invalid values.")
+            }
+        }
     }
 
     override fun onSupportNavigateUp(): Boolean {
