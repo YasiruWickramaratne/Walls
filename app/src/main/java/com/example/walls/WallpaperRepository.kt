@@ -5,8 +5,9 @@ interface WallpaperRepository {
         apiKey: String?,
         sorting: String,
         categories: String,
-        purity: String
-    ): List<Wallpaper>
+        purity: String,
+        page: Int
+    ): WallpaperResponse
 
     fun getApiKey(): String
     fun saveFilterSettings(categories: String, purity: String)

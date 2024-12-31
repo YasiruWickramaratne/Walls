@@ -5,7 +5,6 @@ package com.example.walls
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.MenuItem
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
@@ -43,7 +42,7 @@ class MainActivity : AppCompatActivity(),
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        Log.d("MainActivity", "onCreate called")
+        //Log.d("MainActivity", "onCreate called")
 
         // Set up the toolbar
         val toolbar: Toolbar = findViewById(R.id.toolbar)
@@ -71,7 +70,7 @@ class MainActivity : AppCompatActivity(),
         viewPager.adapter = adapter
 
         // Initial fetch for both tabs
-        Log.d("MainActivity", "Fetching initial wallpapers")
+        //Log.d("MainActivity", "Fetching initial wallpapers")
         viewModel.fetchWallpapers("date_added")
         viewModel.fetchWallpapers("toplist")
 
@@ -84,7 +83,7 @@ class MainActivity : AppCompatActivity(),
         }.attach()
 
         findViewById<FloatingActionButton>(R.id.filterFab).setOnClickListener {
-            Log.d("MainActivity", "Filter FAB clicked")
+            //Log.d("MainActivity", "Filter FAB clicked")
             showFilterDialog()
         }
 
@@ -92,8 +91,11 @@ class MainActivity : AppCompatActivity(),
 
         viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
-                Log.d("MainActivity", "Page selected: $position")
-                super.onPageSelected(position)
+                // Add actual functionality here when needed
+                when (position) {
+                    0 -> { /* Handle Recent tab selected */ }
+                    1 -> { /* Handle Top tab selected */ }
+                }
             }
         })
 
@@ -134,7 +136,7 @@ class MainActivity : AppCompatActivity(),
         super.onResume()
         val sharedPreferences = getSharedPreferences("WallsPrefs", Context.MODE_PRIVATE)
         val apiKey = sharedPreferences.getString("API_KEY", null)
-        Log.d("MainActivity", "Current API key: $apiKey")
+        //Log.d("MainActivity", "Current API key: $apiKey")
         if (apiKey != null) {
             // Refresh wallpapers if API key is set
             viewModel.fetchWallpapers("date_added")
@@ -150,31 +152,16 @@ class MainActivity : AppCompatActivity(),
     private fun observeFilterChanges() {
         lifecycleScope.launch {
             viewModel.filterChanged.collectLatest { changed ->
-                Log.d("MainActivity", "Filter changed: $changed")
                 if (changed) {
-                    Log.d("MainActivity", "Refreshing current fragment")
                     refreshCurrentFragment()
                 }
-            }
-        }
-
-        // Also observe the wallpaper lists
-        lifecycleScope.launch {
-            viewModel.recentWallpapers.collectLatest { wallpapers ->
-                Log.d("MainActivity", "Recent wallpapers updated: ${wallpapers.size} items")
-            }
-        }
-
-        lifecycleScope.launch {
-            viewModel.topWallpapers.collectLatest { wallpapers ->
-                Log.d("MainActivity", "Top wallpapers updated: ${wallpapers.size} items")
             }
         }
     }
 
     private fun refreshCurrentFragment() {
         val currentItem = viewPager.currentItem
-        Log.d("MainActivity", "Refreshing fragment at position: $currentItem")
+        //Log.d("MainActivity", "Refreshing fragment at position: $currentItem")
         when (currentItem) {
             0 -> viewModel.fetchWallpapers("date_added")
             1 -> viewModel.fetchWallpapers("toplist")
@@ -189,7 +176,7 @@ class WallpaperPagerAdapter(
     override fun getItemCount(): Int = 2
 
     override fun createFragment(position: Int): Fragment {
-        Log.d("WallpaperPagerAdapter", "Creating fragment for position: $position")
+        //Log.d("WallpaperPagerAdapter", "Creating fragment for position: $position")
         return when (position) {
             0 -> WallpaperFragment.newInstance(
                 true,

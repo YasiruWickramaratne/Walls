@@ -11,7 +11,6 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -21,6 +20,7 @@ class WallpaperFragment : Fragment(), FilterUpdateListener {
     private val viewModel: WallpaperViewModel by activityViewModels()
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: WallpaperAdapter
+    private lateinit var layoutManager: GridLayoutManager
 
     private val isRecentTab: Boolean by lazy { arguments?.getBoolean(ARG_IS_RECENT_TAB) ?: true }
     private val sorting: String by lazy { arguments?.getString(ARG_SORTING) ?: "date_added" }
@@ -34,19 +34,8 @@ class WallpaperFragment : Fragment(), FilterUpdateListener {
     }
 
     override fun onFilterUpdated(categories: String, purity: String) {
-        // Log the update for debugging
-        Log.d("WallpaperFragment", "Filters updated: categories=$categories, purity=$purity")
-
-        // Refresh the wallpaper list with new filters
+        viewModel.resetPagination()
         viewModel.fetchWallpapers(sorting)
-
-        // Optionally, you might want to scroll the list back to the top
-        recyclerView.scrollToPosition(0)
-
-        // Notify the user that the filters have been updated (optional)
-        view?.let {
-            Snackbar.make(it, "Filters updated", Snackbar.LENGTH_SHORT).show()
-        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -57,8 +46,26 @@ class WallpaperFragment : Fragment(), FilterUpdateListener {
         }
 
         recyclerView = view.findViewById(R.id.recyclerView)
-        recyclerView.layoutManager = GridLayoutManager(context, 2)
+        layoutManager = GridLayoutManager(context, 2)
+        recyclerView.layoutManager = layoutManager
         recyclerView.adapter = adapter
+
+        // Add scroll listener for pagination
+        recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
+                
+                val visibleItemCount = layoutManager.childCount
+                val totalItemCount = layoutManager.itemCount
+                val firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition()
+
+                // Check if we need to load more items
+                if ((visibleItemCount + firstVisibleItemPosition) >= totalItemCount - 5
+                    && firstVisibleItemPosition >= 0) {
+                    loadMoreWallpapers()
+                }
+            }
+        })
 
         viewLifecycleOwner.lifecycleScope.launch {
             if (isRecentTab) {
@@ -86,6 +93,10 @@ class WallpaperFragment : Fragment(), FilterUpdateListener {
             putExtra("IMAGE_URL", wallpaper.path)
         }
         startActivity(intent)
+    }
+
+    private fun loadMoreWallpapers() {
+        viewModel.fetchWallpapers(sorting, isLoadingMore = true)
     }
 
     companion object {

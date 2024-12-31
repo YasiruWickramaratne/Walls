@@ -11,7 +11,8 @@ interface WallhavenApiService {
         @Query("apikey") apiKey: String?,
         @Query("sorting") sorting: String,
         @Query("categories") categories: String,
-        @Query("purity") purity: String
+        @Query("purity") purity: String,
+        @Query("page") page: Int = 1
     ): WallpaperResponse
 
     @GET("w/{id}")

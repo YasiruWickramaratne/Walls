@@ -5,11 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.walls.api.WallpaperDetail
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @HiltViewModel
 class WallpaperViewModel @Inject constructor(
@@ -71,48 +70,55 @@ class WallpaperViewModel @Inject constructor(
         currentPurity = purity
     }
 
-    private var lastApiCallTime = 0L
-    private val apiCallCoolDown = 5000L // 5 seconds cooldown
+    // Add page tracking
+    private var currentRecentPage = 1
+    private var currentTopPage = 1
+    private var isRecentLoading = false
+    private var isTopLoading = false
+    private var hasRecentMorePages = true
+    private var hasTopMorePages = true
 
-    fun fetchWallpapers(sorting: String) {
+    fun fetchWallpapers(sorting: String, isLoadingMore: Boolean = false) {
+        val isRecent = sorting == "date_added"
+        val currentPage = if (isRecent) currentRecentPage else currentTopPage
+        
+        if ((isRecent && isRecentLoading) || (!isRecent && isTopLoading)) return
+        if ((isRecent && !hasRecentMorePages) || (!isRecent && !hasTopMorePages)) return
+
         viewModelScope.launch {
             try {
-                Log.d("WallpaperViewModel", "Fetching wallpapers for sorting: $sorting")
+                if (isRecent) isRecentLoading = true else isTopLoading = true
                 
-                val currentTime = System.currentTimeMillis()
-                if (currentTime - lastApiCallTime < apiCallCoolDown) {
-                    delay(apiCallCoolDown - (currentTime - lastApiCallTime))
-                }
-                lastApiCallTime = System.currentTimeMillis()
-
-                val apiKey = wallpaperRepository.getApiKey()
-                
-                val wallpapers = wallpaperRepository.fetchWallpapers(
-                    apiKey = apiKey,
+                val response = wallpaperRepository.fetchWallpapers(
+                    apiKey = wallpaperRepository.getApiKey(),
                     sorting = sorting,
                     categories = currentCategories,
-                    purity = currentPurity
+                    purity = currentPurity,
+                    page = currentPage
                 )
 
-                Log.d("WallpaperViewModel", "Received ${wallpapers.size} wallpapers for $sorting")
-
-                when (sorting) {
-                    "date_added" -> {
-                        _recentWallpapers.value = wallpapers
-                        Log.d("WallpaperViewModel", "Updated recent wallpapers")
+                // Update the appropriate list
+                if (isRecent) {
+                    _recentWallpapers.value = if (isLoadingMore) {
+                        _recentWallpapers.value + response.data
+                    } else {
+                        response.data
                     }
-                    "toplist" -> {
-                        _topWallpapers.value = wallpapers
-                        Log.d("WallpaperViewModel", "Updated top wallpapers")
+                    currentRecentPage++
+                    hasRecentMorePages = response.meta.current_page < response.meta.last_page
+                } else {
+                    _topWallpapers.value = if (isLoadingMore) {
+                        _topWallpapers.value + response.data
+                    } else {
+                        response.data
                     }
-                }
-
-                // Only set filterChanged to false after both fetches are complete
-                if (sorting == "toplist") {
-                    _filterChanged.value = false
+                    currentTopPage++
+                    hasTopMorePages = response.meta.current_page < response.meta.last_page
                 }
             } catch (e: Exception) {
                 Log.e("WallpaperViewModel", "Error fetching wallpapers", e)
+            } finally {
+                if (isRecent) isRecentLoading = false else isTopLoading = false
             }
         }
     }
@@ -141,12 +147,28 @@ class WallpaperViewModel @Inject constructor(
     fun isSfwSelected() = currentPurity[0] == '1'
     fun isSketchySelected() = currentPurity[1] == '1'
     fun isNsfwSelected() = currentPurity[2] == '1'
+
+    fun resetPagination() {
+        currentRecentPage = 1
+        currentTopPage = 1
+        hasRecentMorePages = true
+        hasTopMorePages = true
+        _recentWallpapers.value = emptyList()
+        _topWallpapers.value = emptyList()
+    }
 }
 
 data class WallpaperResponse(
-    val data: List<Wallpaper>
+    val data: List<Wallpaper>,
+    val meta: Meta
 )
 
+data class Meta(
+    val current_page: Int,
+    val last_page: Int,
+    val per_page: Int,
+    val total: Int
+)
 
 data class Wallpaper(
     val id: String,

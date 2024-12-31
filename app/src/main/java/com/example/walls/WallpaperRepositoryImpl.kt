@@ -19,10 +19,10 @@ class WallpaperRepositoryImpl @Inject constructor(
         apiKey: String?,
         sorting: String,
         categories: String,
-        purity: String
-    ): List<Wallpaper> {
-        val response = apiService.searchWallpapers(apiKey, sorting, categories, purity)
-        return response.data
+        purity: String,
+        page: Int
+    ): WallpaperResponse {
+        return apiService.searchWallpapers(apiKey, sorting, categories, purity, page)
     }
 
     override fun getApiKey(): String {
