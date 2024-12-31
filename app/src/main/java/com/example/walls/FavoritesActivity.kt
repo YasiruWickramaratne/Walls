@@ -1,10 +1,10 @@
 package com.example.walls
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -21,14 +21,25 @@ class FavoritesActivity : AppCompatActivity() {
     private val viewModel: WallpaperViewModel by viewModels()
     private lateinit var adapter: WallpaperAdapter
 
+    private val cropActivityResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            // Refresh the list if the favorite state was changed in CropActivity
+            viewModel.fetchFavoriteWallpapers()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityFavoritesBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         adapter = WallpaperAdapter { wallpaper ->
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(wallpaper.url))
-            startActivity(intent)
+            Intent(this, CropActivity::class.java).apply {
+                putExtra("WALLPAPER_ID", wallpaper.id)
+                putExtra("IMAGE_URL", wallpaper.url)
+            }.also {
+                cropActivityResultLauncher.launch(it)
+            }
         }
 
         binding.favoritesRecyclerView.apply {

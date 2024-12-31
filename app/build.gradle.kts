@@ -74,5 +74,7 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
     ksp(libs.androidx.room.compiler) // Add this line
+    //noinspection UseTomlInstead
+    implementation("com.vanniktech:android-image-cropper:4.6.0")
 
 }
