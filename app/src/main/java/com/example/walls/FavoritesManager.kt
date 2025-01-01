@@ -10,10 +10,14 @@ class FavoritesManager @Inject constructor(
 ) {
     private val favoritesPreferences: SharedPreferences =
         context.getSharedPreferences("Favorites", Context.MODE_PRIVATE)
-    private val _favorites = MutableLiveData<Set<String>>(setOf())
+    private val _favorites = MutableLiveData<Set<String>>()
 
-    init {
-        _favorites.value = getFavorites()
+    fun loadFavorites() {
+        _favorites.postValue(getFavorites())
+    }
+
+    fun getFavorites(): Set<String> {
+        return favoritesPreferences.getStringSet("favorite_ids", setOf()) ?: setOf()
     }
 
     fun toggleFavorite(id: String) {
@@ -24,11 +28,7 @@ class FavoritesManager @Inject constructor(
             currentFavorites.add(id)
         }
         saveFavorites(currentFavorites)
-        _favorites.value = currentFavorites
-    }
-
-    fun getFavorites(): Set<String> {
-        return favoritesPreferences.getStringSet("favorite_ids", setOf()) ?: setOf()
+        _favorites.postValue(currentFavorites)
     }
 
     private fun saveFavorites(favorites: Set<String>) {

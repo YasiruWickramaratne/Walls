@@ -47,6 +47,9 @@ class FavoritesActivity : AppCompatActivity() {
             adapter = this@FavoritesActivity.adapter
         }
 
+        // Load favorites when the activity is created
+        viewModel.loadFavorites()
+
         lifecycleScope.launch {
             viewModel.favoriteWallpapers.collectLatest { wallpaperDetails ->
                 val wallpapers = wallpaperDetails.map { detail ->

@@ -14,13 +14,11 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.widget.addTextChangedListener
-import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import androidx.work.WorkRequest
 import java.util.concurrent.TimeUnit
 
 class SettingsActivity : AppCompatActivity() {
@@ -150,6 +148,8 @@ class SettingsActivity : AppCompatActivity() {
 
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
+            .setRequiresDeviceIdle(false)
+            .setRequiresCharging(false)
             .build()
 
         val workRequest = PeriodicWorkRequestBuilder<AutoWallpaperWorker>(
@@ -159,11 +159,6 @@ class SettingsActivity : AppCompatActivity() {
             TimeUnit.MINUTES
         )
         .setConstraints(constraints)
-        .setBackoffCriteria(
-            BackoffPolicy.LINEAR,
-            WorkRequest.MIN_BACKOFF_MILLIS,
-            TimeUnit.MILLISECONDS
-        )
         .build()
 
         // Use REPLACE policy to ensure only one worker is scheduled

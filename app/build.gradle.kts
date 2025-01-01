@@ -1,7 +1,8 @@
 
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
 
@@ -9,12 +10,12 @@ plugins {
 
 android {
     namespace = "com.example.walls"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.example.walls"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -48,16 +49,9 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
-    implementation(libs.androidx.hilt.common)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.livedata.ktx)
@@ -65,25 +59,19 @@ dependencies {
     implementation(libs.androidx.viewpager2)
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
-    implementation(libs.androidx.lifecycle.viewmodel.ktx)
-    implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.glide)
-    ksp(libs.compiler)
-    implementation(libs.androidx.viewpager2)
     implementation(libs.subsampling.scale.image.view)
-
-
-
-    ksp(libs.androidx.room.compiler) // Add this line
-    implementation(libs.hilt.work)
     implementation(libs.android.image.cropper)
 
-
-    ksp(libs.hilt.work)
-    ksp(libs.androidx.hilt.compiler)
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.android.compiler)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation("com.google.dagger:hilt-android:2.47")
+    implementation("androidx.hilt:hilt-work:1.1.0")
+    ksp("com.google.dagger:hilt-android-compiler:2.47")
+    ksp("androidx.hilt:hilt-compiler:1.1.0")
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
 
-
+    ksp("androidx.room:room-compiler:2.6.0")
 }

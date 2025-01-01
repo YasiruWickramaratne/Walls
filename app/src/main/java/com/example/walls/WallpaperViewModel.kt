@@ -29,7 +29,12 @@ class WallpaperViewModel @Inject constructor(
     fun fetchFavoriteWallpapers() {
         viewModelScope.launch {
             val apiKey = wallpaperRepository.getApiKey()
-            _favoriteWallpapers.value = favoritesRepository.fetchFavoriteWallpapers(apiKey)
+            try {
+                val favorites = favoritesRepository.fetchFavoriteWallpapers(apiKey)
+                _favoriteWallpapers.value = favorites
+            } catch (e: Exception) {
+                Log.e("WallpaperViewModel", "Error fetching favorite wallpapers", e)
+            }
         }
     }
 
@@ -42,7 +47,7 @@ class WallpaperViewModel @Inject constructor(
     private val _filterChanged = MutableStateFlow(false)
     val filterChanged: StateFlow<Boolean> = _filterChanged
 
-    private fun loadFavorites() {
+    fun loadFavorites() {
         viewModelScope.launch {
             _favorites.value = favoritesRepository.loadFavorites()
         }
