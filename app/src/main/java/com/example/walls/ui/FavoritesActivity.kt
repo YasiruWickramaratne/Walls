@@ -1,4 +1,4 @@
-package com.example.walls
+package com.example.walls.ui
 
 import android.content.Intent
 import android.os.Bundle
@@ -9,6 +9,10 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import com.example.walls.Thumbs
+import com.example.walls.Wallpaper
+import com.example.walls.ui.adapters.WallpaperAdapter
+import com.example.walls.WallpaperViewModel
 import com.example.walls.databinding.ActivityFavoritesBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest

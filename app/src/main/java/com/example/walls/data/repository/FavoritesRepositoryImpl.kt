@@ -1,5 +1,6 @@
-package com.example.walls
+package com.example.walls.data.repository
 
+import com.example.walls.data.local.FavoritesManager
 import com.example.walls.api.WallhavenApiService
 import com.example.walls.api.WallpaperDetail
 import javax.inject.Inject

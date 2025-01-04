@@ -1,7 +1,8 @@
-package com.example.walls
+package com.example.walls.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.walls.WallpaperResponse
 import com.example.walls.api.WallhavenApiService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject

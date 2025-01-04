@@ -1,4 +1,4 @@
-package com.example.walls
+package com.example.walls.ui
 
 import android.content.Context
 import android.graphics.BitmapFactory
@@ -9,6 +9,9 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.example.walls.R
+import com.example.walls.data.repository.WallpaperRepository
+import com.example.walls.WallpaperViewModel
 import com.example.walls.api.WallhavenApiService
 import com.example.walls.databinding.ActivityCropBinding
 import dagger.hilt.android.AndroidEntryPoint

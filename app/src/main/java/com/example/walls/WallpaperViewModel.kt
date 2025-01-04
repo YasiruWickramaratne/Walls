@@ -4,8 +4,12 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.walls.api.WallpaperDetail
+import com.example.walls.data.repository.FavoritesRepository
+import com.example.walls.data.repository.WallpaperRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -21,6 +25,9 @@ class WallpaperViewModel @Inject constructor(
 
     private val _favorites = MutableStateFlow<Set<String>>(setOf())
     val favorites: StateFlow<Set<String>> = _favorites
+
+    private val _errorMessage = MutableSharedFlow<String>()
+    val errorMessage: SharedFlow<String> = _errorMessage
 
     init {
         loadFavorites()
@@ -165,12 +172,28 @@ class WallpaperViewModel @Inject constructor(
     }
 
     fun updateFilters(categories: String, purity: String) {
+
+
+
         viewModelScope.launch {
             Log.d("WallpaperViewModel", "Updating filters: categories=$categories, purity=$purity")
             currentCategories = categories
             currentPurity = purity
+
+            if (isNsfwSelected()) {
+                val apiKey = wallpaperRepository.getApiKey()
+                if (apiKey.isEmpty()) {
+                    //Log.e("WallpaperViewModel", "API key is required for NSFW content")
+                    _errorMessage.emit("API key is required for NSFW content!")
+                    // For example, you could use a LiveData to communicate with the UI
+                    // _errorMessage.value = "API key is required for NSFW content"
+                    return@launch
+                }
+                //Log.d("WallpaperViewModel", "API key verified for NSFW content")
+            }
+
             wallpaperRepository.saveFilterSettings(categories, purity)
-            
+
             // Clear caches and reset pagination
             resetPagination()
             

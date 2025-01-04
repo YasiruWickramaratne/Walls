@@ -1,11 +1,11 @@
 package com.example.walls.di
 
 import android.content.Context
-import com.example.walls.FavoritesManager
-import com.example.walls.FavoritesRepository
-import com.example.walls.FavoritesRepositoryImpl
-import com.example.walls.WallpaperRepository
-import com.example.walls.WallpaperRepositoryImpl
+import com.example.walls.data.local.FavoritesManager
+import com.example.walls.data.repository.FavoritesRepository
+import com.example.walls.data.repository.FavoritesRepositoryImpl
+import com.example.walls.data.repository.WallpaperRepository
+import com.example.walls.data.repository.WallpaperRepositoryImpl
 import com.example.walls.api.WallhavenApiService
 import dagger.Binds
 import dagger.Module

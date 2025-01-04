@@ -26,7 +26,7 @@
         </provider>
 
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar">
             <intent-filter>
@@ -35,22 +35,22 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".FullScreenImageActivity"
+        <activity android:name=".ui.FullScreenImageActivity"
             android:theme="@style/Theme.AppCompat.NoActionBar" />
 
         <activity
-            android:name=".SettingsActivity"
+            android:name=".ui.SettingsActivity"
             android:label="@string/settings"
-            android:parentActivityName=".MainActivity">
+            android:parentActivityName=".ui.MainActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value=".MainActivity" />
+                android:value=".ui.MainActivity" />
         </activity>
 
-        <activity android:name=".FavoritesActivity" />
+        <activity android:name=".ui.FavoritesActivity" />
 
           <activity
-        android:name=".CropActivity"
+        android:name=".ui.CropActivity"
         android:exported="false" />
 
     </application>

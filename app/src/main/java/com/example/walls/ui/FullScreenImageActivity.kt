@@ -1,4 +1,4 @@
-package com.example.walls
+package com.example.walls.ui
 
 
 import android.app.WallpaperManager
@@ -18,6 +18,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.activity.viewModels
+import com.example.walls.R
+import com.example.walls.WallpaperViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 

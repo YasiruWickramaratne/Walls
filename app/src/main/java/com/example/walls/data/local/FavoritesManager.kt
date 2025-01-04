@@ -1,4 +1,4 @@
-package com.example.walls
+package com.example.walls.data.local
 
 import android.content.Context
 import android.content.SharedPreferences

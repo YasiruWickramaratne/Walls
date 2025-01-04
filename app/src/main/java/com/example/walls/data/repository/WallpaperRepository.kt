@@ -1,4 +1,6 @@
-package com.example.walls
+package com.example.walls.data.repository
+
+import com.example.walls.WallpaperResponse
 
 interface WallpaperRepository {
     suspend fun fetchWallpapers(

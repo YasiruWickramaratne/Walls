@@ -1,4 +1,4 @@
-package com.example.walls
+package com.example.walls.ui
 
 
 
@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.MenuItem
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.appcompat.app.ActionBarDrawerToggle
@@ -17,6 +18,11 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
+import com.example.walls.data.local.FavoritesManager
+import com.example.walls.ui.dialogs.FilterDialog
+import com.example.walls.R
+import com.example.walls.ui.fragments.WallpaperFragment
+import com.example.walls.WallpaperViewModel
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.navigation.NavigationView
 import com.google.android.material.tabs.TabLayout
@@ -41,6 +47,12 @@ class MainActivity : AppCompatActivity(),
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        lifecycleScope.launch {
+            viewModel.errorMessage.collect { message ->
+                Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
+            }
+        }
 
         //Log.d("MainActivity", "onCreate called")
 

@@ -1,4 +1,4 @@
-package com.example.walls
+package com.example.walls.ui.dialogs
 
 import android.app.Dialog
 import android.os.Bundle
@@ -7,6 +7,8 @@ import android.widget.CheckBox
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
+import com.example.walls.R
+import com.example.walls.WallpaperViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint

@@ -1,4 +1,4 @@
-package com.example.walls
+package com.example.walls.worker
 
 import android.annotation.SuppressLint
 import android.app.WallpaperManager
@@ -11,6 +11,8 @@ import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.example.walls.data.repository.FavoritesRepository
+import com.example.walls.data.repository.WallpaperRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers

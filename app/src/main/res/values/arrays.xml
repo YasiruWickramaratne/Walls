@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="auto_change_intervals">
-        <item>5 Seconds</item>
         <item>15 Minutes</item>
         <item>30 Minutes</item>
         <item>1 Hour</item>
@@ -10,7 +9,6 @@
     </string-array>
 
     <integer-array name="auto_change_interval_millis">
-        <item>5000</item>
         <item>900000</item>
         <item>1800000</item>
         <item>3600000</item>

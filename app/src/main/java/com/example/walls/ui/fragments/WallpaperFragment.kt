@@ -1,4 +1,4 @@
-package com.example.walls
+package com.example.walls.ui.fragments
 
 import android.content.Intent
 import android.os.Bundle
@@ -10,6 +10,12 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.walls.FilterUpdateListener
+import com.example.walls.ui.FullScreenImageActivity
+import com.example.walls.R
+import com.example.walls.Wallpaper
+import com.example.walls.WallpaperViewModel
+import com.example.walls.ui.adapters.WallpaperAdapter
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
