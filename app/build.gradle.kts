@@ -22,12 +22,18 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
     }
+    
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.3"
+    }
 
     // Add this block to enable BuildConfig
     buildFeatures {
+        compose = true
         viewBinding = true
         buildConfig = true
     }
+
 
 
     buildTypes {
@@ -51,7 +57,6 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
-    implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.livedata.ktx)
@@ -72,6 +77,21 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-
     ksp("androidx.room:room-compiler:2.6.0")
+
+
+    implementation("com.google.android.material:material:1.11.0")
+    implementation(platform("androidx.compose:compose-bom:2022.10.00"))
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    implementation(platform("androidx.compose:compose-bom:1.4.3"))
+    implementation(platform("androidx.compose:compose-bom:2023.03.00"))
+    implementation("androidx.drawerlayout:drawerlayout:1.2.0")
+    implementation("androidx.compose.material3:material3")
+    androidTestImplementation(platform("androidx.compose:compose-bom:1.4.3"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
