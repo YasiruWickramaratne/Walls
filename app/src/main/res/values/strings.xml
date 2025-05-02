@@ -13,4 +13,22 @@
     <string name="purity">Purity</string>
     <string name="filter">Filter</string>
     <string name="wallpaper_image_description">Image Description</string>
+    <string name="set_home_screen">Set Home Screen</string>
+    <string name="set_lock_screen">Set Lock Screen</string>
+    <string name="set_both_screens">Set Both Screens</string>
+    <string name="image">Wallpaper Image</string>
+    <string name="open_drawer">Open navigation drawer</string>
+    <string name="close_drawer">Close navigation drawer</string>
+    <string name="settings">Settings</string>
+    <string name="api_key">API Key</string>
+    <string name="save">Save</string>
+    <string name="enter_your_api_key">Enter your API key</string>
+    <string name="home">Home</string>
+    <string name="favorites">Favorites</string>
+    <string name="walls_app">Walls App</string>
+    <string name="save_crop">Save Crop</string>
+    <string name="title_activity_settings">Settings</string>
+    <string name="previous">Previous</string>
+    <string name="next">Next</string>
+    <string name="lorem_ipsum">…</string>
 </resources>

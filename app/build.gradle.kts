@@ -1,19 +1,16 @@
-import java.io.FileInputStream
-import java.util.Properties
 
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("com.google.dagger.hilt.android")
+    id("com.google.devtools.ksp")
+
 }
 
-val apiKeyPropertiesFile = rootProject.file("apikey.properties")
-val apiKeyProperties = Properties()
-apiKeyProperties.load(FileInputStream(apiKeyPropertiesFile))
-
-project.ext.set("API_KEY", apiKeyProperties["API_KEY"] as String)
 android {
     namespace = "com.example.walls"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.example.walls"
@@ -24,14 +21,19 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Add this block to include the API key
-        buildConfigField("String", "API_KEY", "\"${project.property("API_KEY")}\"")
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.3"
     }
 
     // Add this block to enable BuildConfig
     buildFeatures {
+        compose = true
+        viewBinding = true
         buildConfig = true
     }
+
 
 
     buildTypes {
@@ -53,13 +55,6 @@ android {
 }
 
 dependencies {
-
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.material)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.constraintlayout)
@@ -69,9 +64,34 @@ dependencies {
     implementation(libs.androidx.viewpager2)
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
-    implementation(libs.androidx.lifecycle.viewmodel.ktx)
-    implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.glide)
-    annotationProcessor(libs.compiler)
-    implementation(libs.androidx.viewpager2)
+    implementation(libs.subsampling.scale.image.view)
+    implementation(libs.android.image.cropper)
+
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation("com.google.dagger:hilt-android:2.47")
+    implementation("androidx.hilt:hilt-work:1.1.0")
+    ksp("com.google.dagger:hilt-android-compiler:2.47")
+    ksp("androidx.hilt:hilt-compiler:1.1.0")
+    implementation(libs.androidx.hilt.navigation.compose)
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    ksp("androidx.room:room-compiler:2.6.0")
+
+
+    implementation("com.google.android.material:material:1.11.0")
+    implementation(platform("androidx.compose:compose-bom:2022.10.00"))
+    implementation(libs.androidx.ui)
+    implementation(libs.androidx.ui.graphics)
+    implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.material3)
+    implementation(platform("androidx.compose:compose-bom:1.4.3"))
+    implementation(platform("androidx.compose:compose-bom:2023.03.00"))
+    implementation(libs.androidx.drawerlayout)
+    implementation(libs.material3)
+    androidTestImplementation(platform("androidx.compose:compose-bom:1.4.3"))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
 }

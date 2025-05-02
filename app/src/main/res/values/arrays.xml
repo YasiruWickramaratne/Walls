@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="auto_change_intervals">
+        <item>15 Minutes</item>
+        <item>30 Minutes</item>
+        <item>1 Hour</item>
+        <item>12 Hours</item>
+        <item>24 Hours</item>
+    </string-array>
+
+    <integer-array name="auto_change_interval_millis">
+        <item>900000</item>
+        <item>1800000</item>
+        <item>3600000</item>
+        <item>43200000</item>
+        <item>86400000</item>
+    </integer-array>
+
+    <string-array name="wallpaper_screens">
+        <item>Home Screen</item>
+        <item>Lock Screen</item>
+        <item>Both</item>
+    </string-array>
+</resources>
