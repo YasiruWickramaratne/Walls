@@ -34,6 +34,12 @@ class WallpaperViewModel @Inject constructor(
     private val _themeMode = MutableStateFlow(ThemeMode.SYSTEM)
     val themeMode: StateFlow<ThemeMode> = _themeMode
 
+    private val _wallpaperDetails = MutableStateFlow<Map<String, WallpaperDetail>>(emptyMap())
+    val wallpaperDetails: StateFlow<Map<String, WallpaperDetail>> = _wallpaperDetails
+
+    private val _wallpaperDetailsLoading = MutableStateFlow<Set<String>>(emptySet())
+    val wallpaperDetailsLoading: StateFlow<Set<String>> = _wallpaperDetailsLoading
+
     fun setThemeMode(mode: ThemeMode) {
         _themeMode.value = mode
         wallpaperRepository.saveThemeMode(mode.name)
@@ -69,6 +75,9 @@ class WallpaperViewModel @Inject constructor(
 
     private val _topWallpapers = MutableStateFlow<List<Wallpaper>>(emptyList())
     val topWallpapers: StateFlow<List<Wallpaper>> = _topWallpapers
+
+    private val _searchWallpapers = MutableStateFlow<List<Wallpaper>>(emptyList())
+    val searchWallpapers: StateFlow<List<Wallpaper>> = _searchWallpapers
 
     private val _filterChanged = MutableStateFlow(false)
     val filterChanged: StateFlow<Boolean> = _filterChanged
@@ -106,12 +115,17 @@ class WallpaperViewModel @Inject constructor(
     private var isTopLoading = false
     private var hasRecentMorePages = true
     private var hasTopMorePages = true
+    private var hasSearchMorePages = true
     private var currentRecentPage = 1
     private var currentTopPage = 1
+    private var currentSearchPage = 1
 
     // Cache the responses
     private var cachedRecentWallpapers = mutableListOf<Wallpaper>()
     private var cachedTopWallpapers = mutableListOf<Wallpaper>()
+    private var cachedSearchWallpapers = mutableListOf<Wallpaper>()
+    private var isSearchLoading = false
+    private var currentSearchQuery: String = ""
     
     private var isReturningFromFullScreen = false
 
@@ -158,6 +172,7 @@ class WallpaperViewModel @Inject constructor(
                 
                 val response = wallpaperRepository.fetchWallpapers(
                     apiKey = wallpaperRepository.getApiKey(),
+                    query = null,
                     sorting = sorting,
                     categories = currentCategories,
                     purity = currentPurity,
@@ -237,24 +252,57 @@ class WallpaperViewModel @Inject constructor(
     fun resetPagination() {
         currentRecentPage = 1
         currentTopPage = 1
+        currentSearchPage = 1
         hasRecentMorePages = true
         hasTopMorePages = true
+        hasSearchMorePages = true
         cachedRecentWallpapers.clear()
         cachedTopWallpapers.clear()
+        cachedSearchWallpapers.clear()
         _recentWallpapers.value = emptyList()
         _topWallpapers.value = emptyList()
+        _searchWallpapers.value = emptyList()
     }
 
     fun setReturningFromFullScreen() {
         isReturningFromFullScreen = true
     }
 
+    fun fetchWallpaperDetails(id: String) {
+        if (_wallpaperDetails.value.containsKey(id) || _wallpaperDetailsLoading.value.contains(id)) return
+
+        viewModelScope.launch {
+            _wallpaperDetailsLoading.value = _wallpaperDetailsLoading.value + id
+            try {
+                val detail = wallpaperRepository.fetchWallpaperDetails(
+                    id = id,
+                    apiKey = wallpaperRepository.getApiKey().ifBlank { null }
+                )
+                _wallpaperDetails.value = _wallpaperDetails.value + (id to detail)
+            } catch (e: Exception) {
+                Log.e("WallpaperViewModel", "Error fetching wallpaper details for $id", e)
+            } finally {
+                _wallpaperDetailsLoading.value = _wallpaperDetailsLoading.value - id
+            }
+        }
+    }
+
     fun getNextPageForSorting(sorting: String): Int {
-        return if (sorting == "date_added") currentRecentPage else currentTopPage
+        return when (sorting) {
+            "date_added" -> currentRecentPage
+            "toplist" -> currentTopPage
+            "search" -> currentSearchPage
+            else -> currentRecentPage
+        }
     }
 
     fun hasMorePagesForSorting(sorting: String): Boolean {
-        return if (sorting == "date_added") hasRecentMorePages else hasTopMorePages
+        return when (sorting) {
+            "date_added" -> hasRecentMorePages
+            "toplist" -> hasTopMorePages
+            "search" -> hasSearchMorePages
+            else -> hasRecentMorePages
+        }
     }
 
     fun seedWallpapersForSorting(
@@ -269,12 +317,77 @@ class WallpaperViewModel @Inject constructor(
             _recentWallpapers.value = wallpapers
             currentRecentPage = nextPage
             hasRecentMorePages = hasMorePages
-        } else {
+        } else if (sorting == "toplist") {
             cachedTopWallpapers.clear()
             cachedTopWallpapers.addAll(wallpapers)
             _topWallpapers.value = wallpapers
             currentTopPage = nextPage
             hasTopMorePages = hasMorePages
+        } else if (sorting == "search") {
+            cachedSearchWallpapers.clear()
+            cachedSearchWallpapers.addAll(wallpapers)
+            _searchWallpapers.value = wallpapers
+            currentSearchPage = nextPage
+            hasSearchMorePages = hasMorePages
+        }
+    }
+
+    fun setCurrentSearchQuery(query: String) {
+        currentSearchQuery = query.trim()
+    }
+
+    fun getCurrentSearchQuery(): String = currentSearchQuery
+
+    fun fetchSearchWallpapers(query: String, isLoadingMore: Boolean = false) {
+        val normalizedQuery = query.trim()
+        if (normalizedQuery.isBlank()) {
+            currentSearchQuery = ""
+            currentSearchPage = 1
+            hasSearchMorePages = true
+            cachedSearchWallpapers.clear()
+            _searchWallpapers.value = emptyList()
+            return
+        }
+
+        val isNewQuery = normalizedQuery != currentSearchQuery
+        if (isNewQuery) {
+            currentSearchQuery = normalizedQuery
+            currentSearchPage = 1
+            hasSearchMorePages = true
+            cachedSearchWallpapers.clear()
+            _searchWallpapers.value = emptyList()
+        }
+
+        if (isSearchLoading || !hasSearchMorePages) return
+
+        if (!isLoadingMore && !isNewQuery && cachedSearchWallpapers.isNotEmpty()) {
+            _searchWallpapers.value = cachedSearchWallpapers.toList()
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                isSearchLoading = true
+                val response = wallpaperRepository.fetchWallpapers(
+                    apiKey = wallpaperRepository.getApiKey(),
+                    query = normalizedQuery,
+                    sorting = "relevance",
+                    categories = currentCategories,
+                    purity = currentPurity,
+                    page = currentSearchPage
+                )
+                if (!isLoadingMore || isNewQuery) {
+                    cachedSearchWallpapers.clear()
+                }
+                cachedSearchWallpapers.addAll(response.data)
+                _searchWallpapers.value = cachedSearchWallpapers.toList()
+                currentSearchPage++
+                hasSearchMorePages = response.meta.current_page < response.meta.last_page
+            } catch (e: Exception) {
+                Log.e("WallpaperViewModel", "Error fetching search wallpapers", e)
+            } finally {
+                isSearchLoading = false
+            }
         }
     }
 }

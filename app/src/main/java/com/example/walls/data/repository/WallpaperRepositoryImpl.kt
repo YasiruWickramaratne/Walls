@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import com.example.walls.ThemeMode
 import com.example.walls.WallpaperResponse
 import com.example.walls.api.WallhavenApiService
+import com.example.walls.api.WallpaperDetail
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
@@ -19,12 +20,17 @@ class WallpaperRepositoryImpl @Inject constructor(
 
     override suspend fun fetchWallpapers(
         apiKey: String?,
+        query: String?,
         sorting: String,
         categories: String,
         purity: String,
         page: Int
     ): WallpaperResponse {
-        return apiService.searchWallpapers(apiKey, sorting, categories, purity, page)
+        return apiService.searchWallpapers(apiKey, query, sorting, categories, purity, page)
+    }
+
+    override suspend fun fetchWallpaperDetails(id: String, apiKey: String?): WallpaperDetail {
+        return apiService.getWallpaperDetails(id, apiKey?.takeIf { it.isNotBlank() }).data
     }
 
     override fun getApiKey(): String {

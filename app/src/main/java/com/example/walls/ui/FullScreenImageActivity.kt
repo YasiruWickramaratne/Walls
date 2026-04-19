@@ -15,36 +15,73 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.unit.dp
 import androidx.core.view.doOnLayout
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -52,9 +89,11 @@ import coil.imageLoader
 import coil.request.ImageRequest
 import com.davemorrissey.labs.subscaleview.ImageSource
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
+import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView.OnStateChangedListener
 import com.example.walls.ThemeMode
 import com.example.walls.Wallpaper
 import com.example.walls.WallpaperViewModel
+import com.example.walls.api.WallpaperDetail
 import com.example.walls.ui.theme.WallsTheme
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -63,6 +102,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * SubsamplingScaleImageView that intercepts left/right swipes at minimum zoom
@@ -77,6 +117,9 @@ private class SwipeableScaleImageView(context: Context) : SubsamplingScaleImageV
 
     var onSwipeLeft: (() -> Unit)? = null
     var onSwipeRight: (() -> Unit)? = null
+    var onSwipeUp: (() -> Unit)? = null
+    var onSwipeDown: (() -> Unit)? = null
+    var onZoomStateChanged: ((Boolean) -> Unit)? = null
 
     private var startX = 0f
     private var startY = 0f
@@ -85,6 +128,18 @@ private class SwipeableScaleImageView(context: Context) : SubsamplingScaleImageV
     private var maxDx = 0f
     private var maxDy = 0f
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+
+    init {
+        setOnStateChangedListener(object : OnStateChangedListener {
+            override fun onScaleChanged(newScale: Float, origin: Int) {
+                val ms = minScale
+                val isZoomed = isReady && !ms.isNaN() && ms > 0f && newScale > ms * 1.05f
+                onZoomStateChanged?.invoke(isZoomed)
+            }
+
+            override fun onCenterChanged(newCenter: android.graphics.PointF?, origin: Int) = Unit
+        })
+    }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
@@ -143,13 +198,14 @@ private class SwipeableScaleImageView(context: Context) : SubsamplingScaleImageV
         val effectiveDy = maxDy
         val minDistancePx = maxOf(8f * resources.displayMetrics.density, touchSlop * 0.75f)
         val clearlyHorizontal = abs(effectiveDx) > minDistancePx && abs(effectiveDx) > abs(effectiveDy) * 1.05f
+        val clearlyVertical = abs(effectiveDy) > minDistancePx && abs(effectiveDy) > abs(effectiveDx) * 1.15f
 
-        if (!notZoomed || !clearlyHorizontal) {
+        if (!notZoomed || (!clearlyHorizontal && !clearlyVertical)) {
             Log.d(
                 TAG,
                 "ignored source=$source dx=$dx dy=$dy effectiveDx=$effectiveDx effectiveDy=$effectiveDy " +
                     "scale=$scale minScale=$minScale isReady=$isReady notZoomed=$notZoomed " +
-                    "clearlyHorizontal=$clearlyHorizontal threshold=$minDistancePx"
+                    "clearlyHorizontal=$clearlyHorizontal clearlyVertical=$clearlyVertical threshold=$minDistancePx"
             )
             return false
         }
@@ -159,9 +215,21 @@ private class SwipeableScaleImageView(context: Context) : SubsamplingScaleImageV
         Log.d(
             TAG,
             "accepted source=$source dx=$dx dy=$dy effectiveDx=$effectiveDx effectiveDy=$effectiveDy " +
-                "scale=$scale minScale=$minScale direction=${if (effectiveDx < 0) "left" else "right"}"
+                "scale=$scale minScale=$minScale direction=${
+                    when {
+                        clearlyVertical && effectiveDy < 0 -> "up"
+                        clearlyVertical -> "down"
+                        effectiveDx < 0 -> "left"
+                        else -> "right"
+                    }
+                }"
         )
-        if (effectiveDx < 0) onSwipeLeft?.invoke() else onSwipeRight?.invoke()
+        when {
+            clearlyVertical && effectiveDy < 0 -> onSwipeUp?.invoke()
+            clearlyVertical -> onSwipeDown?.invoke()
+            effectiveDx < 0 -> onSwipeLeft?.invoke()
+            else -> onSwipeRight?.invoke()
+        }
         return true
     }
 }
@@ -188,6 +256,7 @@ class FullScreenImageActivity : AppCompatActivity() {
                 listOf(Wallpaper(id, url, url, com.example.walls.Thumbs(url, url, url)))
             }
         val sorting = intent.getStringExtra("WALLPAPER_SORTING") ?: "date_added"
+        val searchQuery = intent.getStringExtra("WALLPAPER_SEARCH_QUERY").orEmpty()
         val nextPage = intent.getIntExtra("WALLPAPER_NEXT_PAGE", 2)
         val hasMorePages = intent.getBooleanExtra("WALLPAPER_HAS_MORE", true)
 
@@ -203,6 +272,9 @@ class FullScreenImageActivity : AppCompatActivity() {
             nextPage = nextPage,
             hasMorePages = hasMorePages
         )
+        if (sorting == "search" && searchQuery.isNotBlank()) {
+            viewModel.setCurrentSearchQuery(searchQuery)
+        }
 
         setContent {
             val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
@@ -214,6 +286,7 @@ class FullScreenImageActivity : AppCompatActivity() {
             WallsTheme(darkTheme = isDark) {
                 FullScreenImageScreen(
                     sorting = sorting,
+                    searchQuery = searchQuery,
                     startIndex = startIndex,
                     viewModel = viewModel,
                     onSetWallpaper = { imageUrl, flag -> setWallpaper(imageUrl, flag) }
@@ -248,28 +321,51 @@ class FullScreenImageActivity : AppCompatActivity() {
 @Composable
 private fun FullScreenImageScreen(
     sorting: String,
+    searchQuery: String,
     startIndex: Int,
     viewModel: WallpaperViewModel,
     onSetWallpaper: (String, Int) -> Unit
 ) {
+    val context = LocalContext.current
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
-    val wallpaperList by if (sorting == "date_added") {
-        viewModel.recentWallpapers.collectAsStateWithLifecycle()
-    } else {
-        viewModel.topWallpapers.collectAsStateWithLifecycle()
+    val detailsById by viewModel.wallpaperDetails.collectAsStateWithLifecycle()
+    val detailsLoading by viewModel.wallpaperDetailsLoading.collectAsStateWithLifecycle()
+    val wallpaperList by when (sorting) {
+        "date_added" -> viewModel.recentWallpapers.collectAsStateWithLifecycle()
+        "toplist" -> viewModel.topWallpapers.collectAsStateWithLifecycle()
+        "search" -> viewModel.searchWallpapers.collectAsStateWithLifecycle()
+        else -> viewModel.recentWallpapers.collectAsStateWithLifecycle()
     }
     var currentIndex by remember { mutableIntStateOf(startIndex) }
+    var isInfoSheetVisible by remember { mutableStateOf(false) }
+    var isImageZoomed by remember { mutableStateOf(false) }
     if (wallpaperList.isEmpty()) return
     if (currentIndex > wallpaperList.lastIndex) {
         currentIndex = wallpaperList.lastIndex
     }
     val currentWallpaper = wallpaperList[currentIndex]
     val isFavorite = favorites.contains(currentWallpaper.id)
+    val currentDetails = detailsById[currentWallpaper.id]
+    val isDetailsLoading = detailsLoading.contains(currentWallpaper.id)
 
     LaunchedEffect(currentIndex, wallpaperList.size, sorting) {
         val nearEnd = currentIndex >= wallpaperList.lastIndex - 2
         if (nearEnd && viewModel.hasMorePagesForSorting(sorting)) {
-            viewModel.fetchWallpapers(sorting, isLoadingMore = true)
+            if (sorting == "search") {
+                viewModel.fetchSearchWallpapers(searchQuery, isLoadingMore = true)
+            } else {
+                viewModel.fetchWallpapers(sorting, isLoadingMore = true)
+            }
+        }
+        isInfoSheetVisible = false
+        viewModel.fetchWallpaperDetails(currentWallpaper.id)
+        wallpaperList.getOrNull(currentIndex + 1)?.id?.let(viewModel::fetchWallpaperDetails)
+        wallpaperList.getOrNull(currentIndex - 1)?.id?.let(viewModel::fetchWallpaperDetails)
+    }
+
+    LaunchedEffect(isImageZoomed) {
+        if (isImageZoomed) {
+            isInfoSheetVisible = false
         }
     }
 
@@ -277,10 +373,18 @@ private fun FullScreenImageScreen(
         if (currentIndex < wallpaperList.lastIndex) {
             currentIndex++
             if (currentIndex >= wallpaperList.lastIndex - 2 && viewModel.hasMorePagesForSorting(sorting)) {
-                viewModel.fetchWallpapers(sorting, isLoadingMore = true)
+                if (sorting == "search") {
+                    viewModel.fetchSearchWallpapers(searchQuery, isLoadingMore = true)
+                } else {
+                    viewModel.fetchWallpapers(sorting, isLoadingMore = true)
+                }
             }
         } else if (viewModel.hasMorePagesForSorting(sorting)) {
-            viewModel.fetchWallpapers(sorting, isLoadingMore = true)
+            if (sorting == "search") {
+                viewModel.fetchSearchWallpapers(searchQuery, isLoadingMore = true)
+            } else {
+                viewModel.fetchWallpapers(sorting, isLoadingMore = true)
+            }
         }
     }
 
@@ -310,25 +414,122 @@ private fun FullScreenImageScreen(
             }
         }
     ) { innerPadding ->
-        AnimatedContent(
-            targetState = currentIndex,
-            transitionSpec = {
-                if (targetState > initialState) {
-                    slideInHorizontally { it } + fadeIn() togetherWith slideOutHorizontally { -it } + fadeOut()
-                } else {
-                    slideInHorizontally { -it } + fadeIn() togetherWith slideOutHorizontally { it } + fadeOut()
-                }
-            },
-            label = "wallpaper",
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-        ) { index ->
-            WallpaperPageView(
-                wallpaper = wallpaperList[index],
-                onSwipeLeft = { showNextWallpaper() },
-                onSwipeRight = { if (currentIndex > 0) currentIndex-- }
-            )
+        ) {
+            AnimatedContent(
+                targetState = currentIndex,
+                transitionSpec = {
+                    val slideFraction = 0.18f
+                    val slideDistance = { fullWidth: Int -> (fullWidth * slideFraction).roundToInt() }
+                    if (targetState > initialState) {
+                        slideInHorizontally(
+                            animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                            initialOffsetX = { slideDistance(it) }
+                        ) + fadeIn(
+                            animationSpec = tween(durationMillis = 160)
+                        ) togetherWith slideOutHorizontally(
+                            animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                            targetOffsetX = { -slideDistance(it) }
+                        ) + fadeOut(
+                            animationSpec = tween(durationMillis = 140)
+                        )
+                    } else {
+                        slideInHorizontally(
+                            animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                            initialOffsetX = { -slideDistance(it) }
+                        ) + fadeIn(
+                            animationSpec = tween(durationMillis = 160)
+                        ) togetherWith slideOutHorizontally(
+                            animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                            targetOffsetX = { slideDistance(it) }
+                        ) + fadeOut(
+                            animationSpec = tween(durationMillis = 140)
+                        )
+                    }
+                },
+                label = "wallpaper",
+                modifier = Modifier.fillMaxSize()
+            ) { index ->
+                WallpaperPageView(
+                    wallpaper = wallpaperList[index],
+                    onSwipeLeft = { showNextWallpaper() },
+                    onSwipeRight = { if (currentIndex > 0) currentIndex-- },
+                    onSwipeUp = { if (!isImageZoomed) isInfoSheetVisible = true },
+                    onSwipeDown = { isInfoSheetVisible = false },
+                    onZoomStateChanged = { zoomed -> isImageZoomed = zoomed }
+                )
+            }
+
+            AnimatedVisibility(
+                visible = isInfoSheetVisible && !isImageZoomed,
+                enter = slideInVertically(
+                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                    initialOffsetY = { it / 2 }
+                ) + fadeIn(animationSpec = tween(180)),
+                exit = slideOutVertically(
+                    animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+                    targetOffsetY = { it / 2 }
+                ) + fadeOut(animationSpec = tween(120)),
+                modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter)
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Transparent)
+                            .clickable { isInfoSheetVisible = false }
+                    )
+                    WallpaperInfoSheet(
+                        details = currentDetails,
+                        isLoading = isDetailsLoading,
+                        onDismiss = { isInfoSheetVisible = false },
+                        modifier = Modifier
+                            .align(androidx.compose.ui.Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 12.dp)
+                    )
+                }
+            }
+
+            AnimatedVisibility(
+                visible = !isInfoSheetVisible && !isImageZoomed,
+                enter = fadeIn(animationSpec = tween(180)),
+                exit = fadeOut(animationSpec = tween(120)),
+                modifier = Modifier.align(androidx.compose.ui.Alignment.TopStart)
+            ) {
+                SmallFloatingActionButton(
+                    onClick = {
+                        val activity = context as? AppCompatActivity
+                        activity?.onBackPressedDispatcher?.onBackPressed()
+                    },
+                    modifier = Modifier.padding(start = 16.dp, top = 16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back"
+                    )
+                }
+            }
+
+            AnimatedVisibility(
+                visible = !isInfoSheetVisible && !isImageZoomed,
+                enter = fadeIn(animationSpec = tween(180)),
+                exit = fadeOut(animationSpec = tween(120)),
+                modifier = Modifier.align(androidx.compose.ui.Alignment.BottomEnd)
+            ) {
+                FloatingActionButton(
+                    onClick = { isInfoSheetVisible = true },
+                    modifier = Modifier.padding(end = 16.dp, bottom = 28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = "Show wallpaper details"
+                    )
+                }
+            }
         }
     }
 }
@@ -337,7 +538,10 @@ private fun FullScreenImageScreen(
 private fun WallpaperPageView(
     wallpaper: Wallpaper,
     onSwipeLeft: () -> Unit,
-    onSwipeRight: () -> Unit
+    onSwipeRight: () -> Unit,
+    onSwipeUp: () -> Unit,
+    onSwipeDown: () -> Unit,
+    onZoomStateChanged: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
     val imageViewRef = remember { mutableStateOf<SwipeableScaleImageView?>(null) }
@@ -362,6 +566,9 @@ private fun WallpaperPageView(
         update = { view ->
             view.onSwipeLeft = onSwipeLeft
             view.onSwipeRight = onSwipeRight
+            view.onSwipeUp = onSwipeUp
+            view.onSwipeDown = onSwipeDown
+            view.onZoomStateChanged = onZoomStateChanged
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 view.doOnLayout { laidOutView ->
                     val edgeWidth = (48 * laidOutView.resources.displayMetrics.density).toInt()
@@ -374,4 +581,163 @@ private fun WallpaperPageView(
         },
         modifier = Modifier.fillMaxSize()
     )
+}
+
+@Composable
+private fun WallpaperInfoSheet(
+    details: WallpaperDetail?,
+    isLoading: Boolean,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val density = LocalDensity.current
+    val dismissThresholdPx = with(density) { 72.dp.toPx() }
+    var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    val colorScheme = MaterialTheme.colorScheme
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        color = colorScheme.surface.copy(alpha = 0.94f),
+        contentColor = colorScheme.onSurface,
+        tonalElevation = 8.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(androidx.compose.ui.Alignment.CenterHorizontally)
+                    .width(40.dp)
+                    .height(4.dp)
+                    .background(colorScheme.onSurface.copy(alpha = 0.25f), CircleShape)
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onVerticalDrag = { change, dragAmount ->
+                                if (dragAmount > 0f || dragOffsetY > 0f) {
+                                    dragOffsetY = (dragOffsetY + dragAmount).coerceAtLeast(0f)
+                                }
+                                change.consume()
+                            },
+                            onDragEnd = {
+                                if (dragOffsetY >= dismissThresholdPx) {
+                                    onDismiss()
+                                }
+                                dragOffsetY = 0f
+                            },
+                            onDragCancel = {
+                                dragOffsetY = 0f
+                            }
+                        )
+                    }
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer { translationY = dragOffsetY }
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = details?.id?.let { "Wallpaper $it" } ?: "Wallpaper details",
+                    color = colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                if (isLoading && details == null) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("Loading details...", color = colorScheme.onSurface.copy(alpha = 0.75f))
+                    return@Column
+                }
+
+                if (details == null) {
+                    Text("Details are unavailable for this wallpaper.", color = colorScheme.onSurface.copy(alpha = 0.75f))
+                    return@Column
+                }
+
+                DetailRow("Resolution", details.resolution)
+                DetailRow("Dimensions", "${details.dimension_x} x ${details.dimension_y}")
+                DetailRow("Type", details.file_type.ifBlank { "Unknown" })
+                DetailRow("Size", formatFileSize(details.file_size))
+                DetailRow("Category", details.category.replaceFirstChar { it.uppercase() })
+                DetailRow("Purity", details.purity.replaceFirstChar { it.uppercase() })
+                DetailRow("Views", details.views.toString())
+                DetailRow("Favorites", details.favorites.toString())
+                DetailRow("Uploaded", details.created_at)
+
+                if (details.tags.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text("Tags", color = colorScheme.onSurface.copy(alpha = 0.9f))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                    ) {
+                        details.tags.forEach { tag ->
+                            AssistChip(
+                                onClick = {},
+                                enabled = false,
+                                label = { Text(tag.name) },
+                                colors = AssistChipDefaults.assistChipColors(
+                                    disabledContainerColor = colorScheme.secondaryContainer.copy(alpha = 0.7f),
+                                    disabledLabelColor = colorScheme.onSecondaryContainer.copy(alpha = 0.95f)
+                                )
+                            )
+                        }
+                    }
+                }
+
+                if (details.colors.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text("Palette", color = colorScheme.onSurface.copy(alpha = 0.9f))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        details.colors.take(5).forEach { hex ->
+                            Box(
+                                modifier = Modifier
+                                    .size(22.dp)
+                                    .background(parseColorOrFallback(hex), CircleShape)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailRow(label: String, value: String) {
+    if (value.isBlank()) return
+    val colorScheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, color = colorScheme.onSurfaceVariant)
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(value, color = colorScheme.onSurface)
+    }
+}
+
+private fun formatFileSize(bytes: Int): String {
+    if (bytes <= 0) return "Unknown"
+    val mb = bytes / (1024f * 1024f)
+    return if (mb >= 1f) String.format("%.1f MB", mb) else String.format("%.0f KB", bytes / 1024f)
+}
+
+private fun parseColorOrFallback(hex: String): Color {
+    return try {
+        Color(android.graphics.Color.parseColor(hex))
+    } catch (_: IllegalArgumentException) {
+        Color.Gray
+    }
 }
