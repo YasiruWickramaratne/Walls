@@ -10,6 +10,10 @@ import javax.inject.Inject
 class FavoritesManager @Inject constructor(
     context: Context
 ) {
+    companion object {
+        private const val MAX_COLLECTIONS = 10
+    }
+
     private val favoritesPreferences: SharedPreferences =
         context.getSharedPreferences("Favorites", Context.MODE_PRIVATE)
     private val _favorites = MutableLiveData<Set<String>>()
@@ -23,6 +27,17 @@ class FavoritesManager @Inject constructor(
         return favoritesPreferences.getStringSet("favorite_ids", setOf()) ?: setOf()
     }
 
+    fun getCollectionWallpaperIds(collectionNames: Set<String>): Set<String> {
+        if (collectionNames.isEmpty()) return emptySet()
+        val selectedNames = collectionNames.map { it.trim() }.filter { it.isNotBlank() }.toSet()
+        if (selectedNames.isEmpty()) return emptySet()
+
+        return getCollections()
+            .filter { collection -> selectedNames.any { it.equals(collection.name, ignoreCase = true) } }
+            .flatMap { it.wallpaperIds }
+            .toSet()
+    }
+
     fun toggleFavorite(id: String) {
         val currentFavorites = getFavorites().toMutableSet()
         if (currentFavorites.contains(id)) {
@@ -32,6 +47,16 @@ class FavoritesManager @Inject constructor(
         }
         saveFavorites(currentFavorites)
         _favorites.postValue(currentFavorites)
+    }
+
+    fun addFavorite(id: String): Boolean {
+        val currentFavorites = getFavorites().toMutableSet()
+        val added = currentFavorites.add(id)
+        if (added) {
+            saveFavorites(currentFavorites)
+            _favorites.postValue(currentFavorites)
+        }
+        return added
     }
 
     private fun saveFavorites(favorites: Set<String>) {
@@ -55,7 +80,20 @@ class FavoritesManager @Inject constructor(
         if (normalized.isBlank()) return false
         val collections = getCollections().toMutableList()
         if (collections.any { it.name.equals(normalized, ignoreCase = true) }) return false
+        if (collections.size >= MAX_COLLECTIONS) return false
         collections.add(com.example.walls.data.repository.FavoriteCollection(normalized, emptySet()))
+        saveCollections(collections)
+        return true
+    }
+
+    fun deleteCollection(name: String): Boolean {
+        val normalized = name.trim()
+        if (normalized.isBlank()) return false
+
+        val collections = getCollections().toMutableList()
+        val removed = collections.removeAll { it.name.equals(normalized, ignoreCase = true) }
+        if (!removed) return false
+
         saveCollections(collections)
         return true
     }
@@ -72,6 +110,27 @@ class FavoritesManager @Inject constructor(
             collections.add(com.example.walls.data.repository.FavoriteCollection(normalized, setOf(wallpaperId)))
         }
         saveCollections(collections)
+    }
+
+    fun toggleCollectionMembership(collectionName: String, wallpaperId: String): Boolean {
+        val normalized = collectionName.trim()
+        if (normalized.isBlank()) return false
+
+        val collections = getCollections().toMutableList()
+        val index = collections.indexOfFirst { it.name.equals(normalized, ignoreCase = true) }
+        if (index == -1) return false
+
+        val collection = collections[index]
+        val isCurrentlyIncluded = wallpaperId in collection.wallpaperIds
+        collections[index] = collection.copy(
+            wallpaperIds = if (isCurrentlyIncluded) {
+                collection.wallpaperIds - wallpaperId
+            } else {
+                collection.wallpaperIds + wallpaperId
+            }
+        )
+        saveCollections(collections)
+        return !isCurrentlyIncluded
     }
 
     private fun saveCollections(collections: List<com.example.walls.data.repository.FavoriteCollection>) {

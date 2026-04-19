@@ -1,11 +1,15 @@
 package com.example.walls.ui.screens
 
 import android.content.Intent
+import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,10 +19,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -28,6 +35,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,12 +55,16 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.walls.Wallpaper
 import com.example.walls.WallpaperViewModel
 import com.example.walls.ui.FullScreenImageActivity
+import com.example.walls.ui.dialogs.FilterDialog
+import com.example.walls.ui.components.WallpaperCard
+import com.example.walls.ui.fullscreen.components.AddToCollectionDialog
 import com.google.gson.Gson
 import androidx.compose.foundation.shape.RoundedCornerShape
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun SearchScreen(
     viewModel: WallpaperViewModel,
@@ -66,15 +78,34 @@ fun SearchScreen(
     val activeQuery by viewModel.currentSearchQuery.collectAsStateWithLifecycle()
     val isSearchLoading by viewModel.searchLoading.collectAsStateWithLifecycle()
     val hasCompletedSearch by viewModel.hasCompletedSearch.collectAsStateWithLifecycle()
+    val favoriteCollections by viewModel.favoriteCollections.collectAsStateWithLifecycle()
     var showFilterDialog by remember { mutableStateOf(false) }
+    var showCollectionDialog by remember { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
+    var selectedIds by rememberSaveable(activeQuery) { mutableStateOf(setOf<String>()) }
     val typedQuery = query.trim()
     val displayQuery = activeQuery.ifBlank { typedQuery }
+    val isSelectionMode = selectedIds.isNotEmpty()
 
     fun submitSearch() {
         viewModel.fetchSearchWallpapers(query)
         keyboardController?.hide()
         focusManager.clearFocus(force = true)
+        selectedIds = emptySet()
+    }
+
+    fun clearSelection() {
+        selectedIds = emptySet()
+    }
+
+    fun addSelectedToFavorites() {
+        selectedIds.forEach(viewModel::addFavorite)
+        Toast.makeText(
+            context,
+            if (selectedIds.size == 1) "Added to favorites" else "Added ${selectedIds.size} wallpapers to favorites",
+            Toast.LENGTH_SHORT
+        ).show()
+        clearSelection()
     }
 
     LaunchedEffect(initialQuery, activeQuery) {
@@ -88,10 +119,23 @@ fun SearchScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Search") },
+                title = { Text(if (isSelectionMode) "${selectedIds.size} selected" else "Search") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = {
+                        if (isSelectionMode) {
+                            clearSelection()
+                        } else {
+                            onBack()
+                        }
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (isSelectionMode) {
+                        TextButton(onClick = { clearSelection() }) {
+                            Text("Cancel")
+                        }
                     }
                 }
             )
@@ -160,20 +204,32 @@ fun SearchScreen(
                         }
 
                         else -> {
-                            WallpaperGrid(
+                            SearchWallpaperGrid(
                                 wallpapers = searchWallpapers,
+                                selectedIds = selectedIds,
                                 onWallpaperClick = { wallpaper, index ->
-                                    val wallpapersJson = Gson().toJson(searchWallpapers)
-                                    Intent(context, FullScreenImageActivity::class.java).apply {
-                                        putExtra("WALLPAPER_ID", wallpaper.id)
-                                        putExtra("IMAGE_URL", wallpaper.path)
-                                        putExtra("WALLPAPER_LIST", wallpapersJson)
-                                        putExtra("WALLPAPER_INDEX", index)
-                                        putExtra("WALLPAPER_SORTING", "search")
-                                        putExtra("WALLPAPER_SEARCH_QUERY", displayQuery)
-                                        putExtra("WALLPAPER_NEXT_PAGE", viewModel.getNextPageForSorting("search"))
-                                        putExtra("WALLPAPER_HAS_MORE", viewModel.hasMorePagesForSorting("search"))
-                                    }.also { context.startActivity(it) }
+                                    if (isSelectionMode) {
+                                        selectedIds = if (selectedIds.contains(wallpaper.id)) {
+                                            selectedIds - wallpaper.id
+                                        } else {
+                                            selectedIds + wallpaper.id
+                                        }
+                                    } else {
+                                        val wallpapersJson = Gson().toJson(searchWallpapers)
+                                        Intent(context, FullScreenImageActivity::class.java).apply {
+                                            putExtra("WALLPAPER_ID", wallpaper.id)
+                                            putExtra("IMAGE_URL", wallpaper.path)
+                                            putExtra("WALLPAPER_LIST", wallpapersJson)
+                                            putExtra("WALLPAPER_INDEX", index)
+                                            putExtra("WALLPAPER_SORTING", "search")
+                                            putExtra("WALLPAPER_SEARCH_QUERY", displayQuery)
+                                            putExtra("WALLPAPER_NEXT_PAGE", viewModel.getNextPageForSorting("search"))
+                                            putExtra("WALLPAPER_HAS_MORE", viewModel.hasMorePagesForSorting("search"))
+                                        }.also { context.startActivity(it) }
+                                    }
+                                },
+                                onWallpaperLongClick = { wallpaper ->
+                                    selectedIds = selectedIds + wallpaper.id
                                 },
                                 onLoadMore = { viewModel.fetchSearchWallpapers(displayQuery, isLoadingMore = true) },
                                 modifier = Modifier.fillMaxSize()
@@ -190,14 +246,23 @@ fun SearchScreen(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                FloatingActionButton(onClick = { showFilterDialog = true }) {
-                    Icon(Icons.Default.FilterList, contentDescription = "Filter")
-                }
+                if (isSelectionMode) {
+                    FloatingActionButton(onClick = { showCollectionDialog = true }) {
+                        Icon(Icons.Default.Star, contentDescription = "Add to collection")
+                    }
+                    FloatingActionButton(onClick = { addSelectedToFavorites() }) {
+                        Icon(Icons.Default.Favorite, contentDescription = "Add to favorites")
+                    }
+                } else {
+                    FloatingActionButton(onClick = { showFilterDialog = true }) {
+                        Icon(Icons.Default.FilterList, contentDescription = "Filter")
+                    }
 
-                FloatingActionButton(
-                    onClick = { submitSearch() }
-                ) {
-                    Icon(Icons.Default.Search, contentDescription = "Search")
+                    FloatingActionButton(
+                        onClick = { submitSearch() }
+                    ) {
+                        Icon(Icons.Default.Search, contentDescription = "Search")
+                    }
                 }
             }
         }
@@ -212,6 +277,49 @@ fun SearchScreen(
                 if (query.isNotBlank()) {
                     viewModel.fetchSearchWallpapers(query)
                 }
+            }
+        )
+    }
+
+    if (showCollectionDialog && selectedIds.isNotEmpty()) {
+        AddToCollectionDialog(
+            collections = favoriteCollections,
+            wallpaperIds = selectedIds,
+            onDismiss = { showCollectionDialog = false },
+            onCreateCollection = { name ->
+                val created = viewModel.createFavoriteCollection(name)
+                if (created) {
+                    selectedIds.forEach { wallpaperId ->
+                        viewModel.addWallpaperToCollection(name, wallpaperId)
+                    }
+                    Toast.makeText(
+                        context,
+                        if (selectedIds.size == 1) "Added to $name" else "Added ${selectedIds.size} wallpapers to $name",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    showCollectionDialog = false
+                    clearSelection()
+                } else {
+                    val message = when {
+                        favoriteCollections.any { it.name.equals(name, ignoreCase = true) } ->
+                            "Collection name already exists"
+                        favoriteCollections.size >= 10 ->
+                            "You can create up to 10 collections"
+                        else ->
+                            "Unable to create collection"
+                    }
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                }
+            },
+            onToggleCollection = { name ->
+                selectedIds.forEach { wallpaperId ->
+                    viewModel.toggleWallpaperInCollection(name, wallpaperId)
+                }
+                Toast.makeText(
+                    context,
+                    "Updated $name",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         )
     }
@@ -231,7 +339,7 @@ private fun SearchLoadingGrid(query: String) {
         )
 
         LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
+            columns = GridCells.Fixed(3),
             contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -271,6 +379,37 @@ private fun SearchLoadingGrid(query: String) {
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SearchWallpaperGrid(
+    wallpapers: List<Wallpaper>,
+    selectedIds: Set<String>,
+    onWallpaperClick: (Wallpaper, Int) -> Unit,
+    onWallpaperLongClick: (Wallpaper) -> Unit,
+    onLoadMore: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        contentPadding = PaddingValues(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier.fillMaxSize()
+    ) {
+        itemsIndexed(wallpapers, key = { _, wallpaper -> wallpaper.id }) { index, wallpaper ->
+            if (index >= wallpapers.size - 5) {
+                LaunchedEffect(index) { onLoadMore() }
+            }
+            WallpaperCard(
+                wallpaper = wallpaper,
+                onClick = { onWallpaperClick(wallpaper, index) },
+                onLongClick = { onWallpaperLongClick(wallpaper) },
+                selected = selectedIds.contains(wallpaper.id)
+            )
         }
     }
 }

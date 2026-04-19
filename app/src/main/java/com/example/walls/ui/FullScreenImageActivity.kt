@@ -3,14 +3,10 @@ package com.example.walls.ui
 import android.app.WallpaperManager
 import android.graphics.Rect
 import android.content.Intent
-import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
-import android.view.MotionEvent
-import android.view.ViewConfiguration
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -28,63 +24,42 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.BottomAppBar
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.doOnLayout
@@ -93,12 +68,13 @@ import androidx.lifecycle.lifecycleScope
 import coil.imageLoader
 import coil.request.ImageRequest
 import com.davemorrissey.labs.subscaleview.ImageSource
-import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
-import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView.OnStateChangedListener
 import com.example.walls.ThemeMode
 import com.example.walls.Wallpaper
 import com.example.walls.WallpaperViewModel
-import com.example.walls.api.WallpaperDetail
+import com.example.walls.ui.fullscreen.SwipeableScaleImageView
+import com.example.walls.ui.fullscreen.rememberFullscreenNavigationState
+import com.example.walls.ui.fullscreen.components.AddToCollectionDialog
+import com.example.walls.ui.fullscreen.components.WallpaperInfoSheet
 import com.example.walls.ui.theme.WallsTheme
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -106,138 +82,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.abs
 import kotlin.math.roundToInt
-
-/**
- * SubsamplingScaleImageView that intercepts left/right swipes at minimum zoom
- * and delegates to navigation callbacks instead of panning.
- * Detection uses only displacement (not velocity) so slow or "pause then lift"
- * swipes are still recognised.
- */
-private class SwipeableScaleImageView(context: Context) : SubsamplingScaleImageView(context) {
-    companion object {
-        private const val TAG = "SwipeableScaleImageView"
-    }
-
-    var onSwipeLeft: (() -> Unit)? = null
-    var onSwipeRight: (() -> Unit)? = null
-    var onSwipeUp: (() -> Unit)? = null
-    var onSwipeDown: (() -> Unit)? = null
-    var onZoomStateChanged: ((Boolean) -> Unit)? = null
-
-    private var startX = 0f
-    private var startY = 0f
-    private var isMultiTouch = false
-    private var swipeHandled = false
-    private var maxDx = 0f
-    private var maxDy = 0f
-    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
-
-    init {
-        setOnStateChangedListener(object : OnStateChangedListener {
-            override fun onScaleChanged(newScale: Float, origin: Int) {
-                val ms = minScale
-                val isZoomed = isReady && !ms.isNaN() && ms > 0f && newScale > ms * 1.05f
-                onZoomStateChanged?.invoke(isZoomed)
-            }
-
-            override fun onCenterChanged(newCenter: android.graphics.PointF?, origin: Int) = Unit
-        })
-    }
-
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                startX = event.rawX
-                startY = event.rawY
-                isMultiTouch = false
-                swipeHandled = false
-                maxDx = 0f
-                maxDy = 0f
-                parent?.requestDisallowInterceptTouchEvent(true)
-            }
-            MotionEvent.ACTION_POINTER_DOWN -> {
-                isMultiTouch = true
-                swipeHandled = false
-            }
-            MotionEvent.ACTION_MOVE -> {
-                if (shouldHandleSwipe(event, source = "move")) {
-                    return true
-                }
-            }
-            MotionEvent.ACTION_UP -> {
-                if (shouldHandleSwipe(event, source = "up")) {
-                    return true
-                }
-                swipeHandled = false
-                isMultiTouch = false
-            }
-            MotionEvent.ACTION_CANCEL -> {
-                swipeHandled = false
-                isMultiTouch = false
-            }
-        }
-        if (swipeHandled) {
-            return true
-        }
-        return super.onTouchEvent(event)
-    }
-
-    private fun shouldHandleSwipe(event: MotionEvent, source: String): Boolean {
-        if (isMultiTouch || swipeHandled) return false
-
-        val dx = event.rawX - startX
-        val dy = event.rawY - startY
-        if (abs(dx) > abs(maxDx)) {
-            maxDx = dx
-        }
-        if (abs(dy) > abs(maxDy)) {
-            maxDy = dy
-        }
-        val ms = minScale
-        val notZoomed = !isReady || ms.isNaN() || ms <= 0f || scale <= ms * 1.1f
-        // Use the furthest movement seen during the gesture so brief flicks still count
-        // even if the last sampled move is short.
-        val effectiveDx = maxDx
-        val effectiveDy = maxDy
-        val minDistancePx = maxOf(8f * resources.displayMetrics.density, touchSlop * 0.75f)
-        val clearlyHorizontal = abs(effectiveDx) > minDistancePx && abs(effectiveDx) > abs(effectiveDy) * 1.05f
-        val clearlyVertical = abs(effectiveDy) > minDistancePx && abs(effectiveDy) > abs(effectiveDx) * 1.15f
-
-        if (!notZoomed || (!clearlyHorizontal && !clearlyVertical)) {
-            Log.d(
-                TAG,
-                "ignored source=$source dx=$dx dy=$dy effectiveDx=$effectiveDx effectiveDy=$effectiveDy " +
-                    "scale=$scale minScale=$minScale isReady=$isReady notZoomed=$notZoomed " +
-                    "clearlyHorizontal=$clearlyHorizontal clearlyVertical=$clearlyVertical threshold=$minDistancePx"
-            )
-            return false
-        }
-
-        swipeHandled = true
-        parent?.requestDisallowInterceptTouchEvent(true)
-        Log.d(
-            TAG,
-            "accepted source=$source dx=$dx dy=$dy effectiveDx=$effectiveDx effectiveDy=$effectiveDy " +
-                "scale=$scale minScale=$minScale direction=${
-                    when {
-                        clearlyVertical && effectiveDy < 0 -> "up"
-                        clearlyVertical -> "down"
-                        effectiveDx < 0 -> "left"
-                        else -> "right"
-                    }
-                }"
-        )
-        when {
-            clearlyVertical && effectiveDy < 0 -> onSwipeUp?.invoke()
-            clearlyVertical -> onSwipeDown?.invoke()
-            effectiveDx < 0 -> onSwipeLeft?.invoke()
-            else -> onSwipeRight?.invoke()
-        }
-        return true
-    }
-}
+import androidx.compose.material3.Text
 
 @AndroidEntryPoint
 class FullScreenImageActivity : AppCompatActivity() {
@@ -323,7 +169,7 @@ class FullScreenImageActivity : AppCompatActivity() {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 private fun FullScreenImageScreen(
     sorting: String,
@@ -343,21 +189,20 @@ private fun FullScreenImageScreen(
         "search" -> viewModel.searchWallpapers.collectAsStateWithLifecycle()
         else -> viewModel.recentWallpapers.collectAsStateWithLifecycle()
     }
-    var currentIndex by remember { mutableIntStateOf(startIndex) }
+    val navigationState = rememberFullscreenNavigationState(startIndex)
     var isInfoSheetVisible by remember { mutableStateOf(false) }
     var isImageZoomed by remember { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
     if (wallpaperList.isEmpty()) return
-    if (currentIndex > wallpaperList.lastIndex) {
-        currentIndex = wallpaperList.lastIndex
-    }
-    val currentWallpaper = wallpaperList[currentIndex]
+    navigationState.syncToBounds(wallpaperList.lastIndex)
+    val currentWallpaper = wallpaperList[navigationState.currentIndex]
     val isFavorite = favorites.contains(currentWallpaper.id)
+    val isInCollection = favoriteCollections.any { currentWallpaper.id in it.wallpaperIds }
     val currentDetails = detailsById[currentWallpaper.id]
     val isDetailsLoading = detailsLoading.contains(currentWallpaper.id)
 
-    LaunchedEffect(currentIndex, wallpaperList.size, sorting) {
-        val nearEnd = currentIndex >= wallpaperList.lastIndex - 2
+    LaunchedEffect(navigationState.currentIndex, wallpaperList.size, sorting) {
+        val nearEnd = navigationState.currentIndex >= wallpaperList.lastIndex - 2
         if (nearEnd && viewModel.hasMorePagesForSorting(sorting)) {
             if (sorting == "search") {
                 viewModel.fetchSearchWallpapers(searchQuery, isLoadingMore = true)
@@ -367,8 +212,8 @@ private fun FullScreenImageScreen(
         }
         isInfoSheetVisible = false
         viewModel.fetchWallpaperDetails(currentWallpaper.id)
-        wallpaperList.getOrNull(currentIndex + 1)?.id?.let(viewModel::fetchWallpaperDetails)
-        wallpaperList.getOrNull(currentIndex - 1)?.id?.let(viewModel::fetchWallpaperDetails)
+        wallpaperList.getOrNull(navigationState.currentIndex + 1)?.id?.let(viewModel::fetchWallpaperDetails)
+        wallpaperList.getOrNull(navigationState.currentIndex - 1)?.id?.let(viewModel::fetchWallpaperDetails)
     }
 
     LaunchedEffect(isImageZoomed) {
@@ -378,9 +223,8 @@ private fun FullScreenImageScreen(
     }
 
     fun showNextWallpaper() {
-        if (currentIndex < wallpaperList.lastIndex) {
-            currentIndex++
-            if (currentIndex >= wallpaperList.lastIndex - 2 && viewModel.hasMorePagesForSorting(sorting)) {
+        if (navigationState.showNext(wallpaperList.lastIndex)) {
+            if (navigationState.currentIndex >= wallpaperList.lastIndex - 2 && viewModel.hasMorePagesForSorting(sorting)) {
                 if (sorting == "search") {
                     viewModel.fetchSearchWallpapers(searchQuery, isLoadingMore = true)
                 } else {
@@ -412,15 +256,10 @@ private fun FullScreenImageScreen(
                         onClick = { onSetWallpaper(currentWallpaper.path, WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK) },
                         modifier = Modifier.weight(1f)
                     ) { Text("Both") }
-                    Box(
-                        modifier = Modifier.combinedClickable(
-                            onClick = { viewModel.toggleFavorite(currentWallpaper.id) },
-                            onLongClick = { showCollectionDialog = true }
-                        )
-                    ) {
+                    IconButton(onClick = { showCollectionDialog = true }) {
                         Icon(
-                            if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Favorite"
+                            if (isInCollection) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = "Collections"
                         )
                     }
                 }
@@ -433,7 +272,7 @@ private fun FullScreenImageScreen(
                 .padding(innerPadding)
         ) {
             AnimatedContent(
-                targetState = currentIndex,
+                targetState = navigationState.currentIndex,
                 transitionSpec = {
                     val slideFraction = 0.18f
                     val slideDistance = { fullWidth: Int -> (fullWidth * slideFraction).roundToInt() }
@@ -469,7 +308,7 @@ private fun FullScreenImageScreen(
                 WallpaperPageView(
                     wallpaper = wallpaperList[index],
                     onSwipeLeft = { showNextWallpaper() },
-                    onSwipeRight = { if (currentIndex > 0) currentIndex-- },
+                    onSwipeRight = { navigationState.showPrevious() },
                     onSwipeUp = { if (!isImageZoomed) isInfoSheetVisible = true },
                     onSwipeDown = { isInfoSheetVisible = false },
                     onZoomStateChanged = { zoomed -> isImageZoomed = zoomed }
@@ -536,14 +375,27 @@ private fun FullScreenImageScreen(
                 exit = fadeOut(animationSpec = tween(120)),
                 modifier = Modifier.align(androidx.compose.ui.Alignment.BottomEnd)
             ) {
-                FloatingActionButton(
-                    onClick = { isInfoSheetVisible = true },
-                    modifier = Modifier.padding(end = 16.dp, bottom = 28.dp)
+                Column(
+                    modifier = Modifier.padding(end = 16.dp, bottom = 28.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = androidx.compose.ui.Alignment.End
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = "Show wallpaper details"
-                    )
+                    FloatingActionButton(
+                        onClick = { viewModel.toggleFavorite(currentWallpaper.id) }
+                    ) {
+                        Icon(
+                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = "Favorite"
+                        )
+                    }
+                    FloatingActionButton(
+                        onClick = { isInfoSheetVisible = true }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Show wallpaper details"
+                        )
+                    }
                 }
             }
         }
@@ -551,8 +403,8 @@ private fun FullScreenImageScreen(
 
     if (showCollectionDialog) {
         AddToCollectionDialog(
-            collections = favoriteCollections.map { it.name },
-            wallpaperId = currentWallpaper.id,
+            collections = favoriteCollections,
+            wallpaperIds = setOf(currentWallpaper.id),
             onDismiss = { showCollectionDialog = false },
             onCreateCollection = { name ->
                 val created = viewModel.createFavoriteCollection(name)
@@ -561,64 +413,27 @@ private fun FullScreenImageScreen(
                     Toast.makeText(context, "Added to $name", Toast.LENGTH_SHORT).show()
                     showCollectionDialog = false
                 } else {
-                    Toast.makeText(context, "Collection name already exists", Toast.LENGTH_SHORT).show()
+                    val message = when {
+                        favoriteCollections.any { it.name.equals(name, ignoreCase = true) } ->
+                            "Collection name already exists"
+                        favoriteCollections.size >= 10 ->
+                            "You can create up to 10 collections"
+                        else ->
+                            "Unable to create collection"
+                    }
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                 }
             },
-            onAddToCollection = { name ->
-                viewModel.addWallpaperToCollection(name, currentWallpaper.id)
-                Toast.makeText(context, "Added to $name", Toast.LENGTH_SHORT).show()
-                showCollectionDialog = false
+            onToggleCollection = { name ->
+                val added = viewModel.toggleWallpaperInCollection(name, currentWallpaper.id)
+                Toast.makeText(
+                    context,
+                    if (added) "Added to $name" else "Removed from $name",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         )
     }
-}
-
-@Composable
-private fun AddToCollectionDialog(
-    collections: List<String>,
-    wallpaperId: String,
-    onDismiss: () -> Unit,
-    onCreateCollection: (String) -> Unit,
-    onAddToCollection: (String) -> Unit
-) {
-    var newCollectionName by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add to collection") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (collections.isNotEmpty()) {
-                    Text("Choose an existing collection")
-                    collections.forEach { collection ->
-                        TextButton(onClick = { onAddToCollection(collection) }) {
-                            Text(collection)
-                        }
-                    }
-                }
-                Text(if (collections.isEmpty()) "Create a new collection" else "Or create a new collection")
-                OutlinedTextField(
-                    value = newCollectionName,
-                    onValueChange = { newCollectionName = it },
-                    singleLine = true,
-                    label = { Text("Collection name") }
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onCreateCollection(newCollectionName.trim()) },
-                enabled = newCollectionName.trim().isNotBlank()
-            ) {
-                Text("Create")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
 }
 
 @Composable
@@ -668,163 +483,4 @@ private fun WallpaperPageView(
         },
         modifier = Modifier.fillMaxSize()
     )
-}
-
-@Composable
-private fun WallpaperInfoSheet(
-    details: WallpaperDetail?,
-    isLoading: Boolean,
-    onTagClick: (String) -> Unit,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val density = LocalDensity.current
-    val dismissThresholdPx = with(density) { 72.dp.toPx() }
-    var dragOffsetY by remember { mutableFloatStateOf(0f) }
-    val colorScheme = MaterialTheme.colorScheme
-
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
-        color = colorScheme.surface.copy(alpha = 0.94f),
-        contentColor = colorScheme.onSurface,
-        tonalElevation = 8.dp
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .align(androidx.compose.ui.Alignment.CenterHorizontally)
-                    .width(40.dp)
-                    .height(4.dp)
-                    .background(colorScheme.onSurface.copy(alpha = 0.25f), CircleShape)
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures(
-                            onVerticalDrag = { change, dragAmount ->
-                                if (dragAmount > 0f || dragOffsetY > 0f) {
-                                    dragOffsetY = (dragOffsetY + dragAmount).coerceAtLeast(0f)
-                                }
-                                change.consume()
-                            },
-                            onDragEnd = {
-                                if (dragOffsetY >= dismissThresholdPx) {
-                                    onDismiss()
-                                }
-                                dragOffsetY = 0f
-                            },
-                            onDragCancel = {
-                                dragOffsetY = 0f
-                            }
-                        )
-                    }
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .graphicsLayer { translationY = dragOffsetY }
-                    .verticalScroll(rememberScrollState())
-            ) {
-                Text(
-                    text = details?.id?.let { "Wallpaper $it" } ?: "Wallpaper details",
-                    color = colorScheme.onSurface,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-
-                if (isLoading && details == null) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("Loading details...", color = colorScheme.onSurface.copy(alpha = 0.75f))
-                    return@Column
-                }
-
-                if (details == null) {
-                    Text("Details are unavailable for this wallpaper.", color = colorScheme.onSurface.copy(alpha = 0.75f))
-                    return@Column
-                }
-
-                DetailRow("Resolution", details.resolution)
-                DetailRow("Dimensions", "${details.dimension_x} x ${details.dimension_y}")
-                DetailRow("Type", details.file_type.ifBlank { "Unknown" })
-                DetailRow("Size", formatFileSize(details.file_size))
-                DetailRow("Category", details.category.replaceFirstChar { it.uppercase() })
-                DetailRow("Purity", details.purity.replaceFirstChar { it.uppercase() })
-                DetailRow("Views", details.views.toString())
-                DetailRow("Favorites", details.favorites.toString())
-                DetailRow("Uploaded", details.created_at)
-
-                if (details.tags.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text("Tags", color = colorScheme.onSurface.copy(alpha = 0.9f))
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                    ) {
-                        details.tags.forEach { tag ->
-                            AssistChip(
-                                onClick = { onTagClick(tag.name) },
-                                label = { Text(tag.name) },
-                                colors = AssistChipDefaults.assistChipColors(
-                                    containerColor = colorScheme.secondaryContainer.copy(alpha = 0.7f),
-                                    labelColor = colorScheme.onSecondaryContainer.copy(alpha = 0.95f)
-                                )
-                            )
-                        }
-                    }
-                }
-
-                if (details.colors.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text("Palette", color = colorScheme.onSurface.copy(alpha = 0.9f))
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        details.colors.take(5).forEach { hex ->
-                            Box(
-                                modifier = Modifier
-                                    .size(22.dp)
-                                    .background(parseColorOrFallback(hex), CircleShape)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DetailRow(label: String, value: String) {
-    if (value.isBlank()) return
-    val colorScheme = MaterialTheme.colorScheme
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 3.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, color = colorScheme.onSurfaceVariant)
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(value, color = colorScheme.onSurface)
-    }
-}
-
-private fun formatFileSize(bytes: Int): String {
-    if (bytes <= 0) return "Unknown"
-    val mb = bytes / (1024f * 1024f)
-    return if (mb >= 1f) String.format("%.1f MB", mb) else String.format("%.0f KB", bytes / 1024f)
-}
-
-private fun parseColorOrFallback(hex: String): Color {
-    return try {
-        Color(android.graphics.Color.parseColor(hex))
-    } catch (_: IllegalArgumentException) {
-        Color.Gray
-    }
 }

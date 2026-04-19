@@ -11,7 +11,11 @@ import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.example.walls.data.repository.FavoritesRepository
+import com.example.walls.data.manager.AutoWallpaperSettingsManager
+import com.example.walls.data.manager.FavoritesCollectionManager
+import com.example.walls.data.model.AutoWallpaperConfig
+import com.example.walls.data.model.AutoWallpaperHistoryEntry
+import com.example.walls.data.model.RotationSource
 import com.example.walls.data.repository.WallpaperRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -26,8 +30,9 @@ import java.net.URL
 class AutoWallpaperWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,
-    private val favoritesRepository: FavoritesRepository,
-    private val wallpaperRepository: WallpaperRepository
+    private val favoritesCollectionManager: FavoritesCollectionManager,
+    private val wallpaperRepository: WallpaperRepository,
+    private val autoWallpaperSettingsManager: AutoWallpaperSettingsManager
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -35,11 +40,29 @@ class AutoWallpaperWorker @AssistedInject constructor(
         
         return try {
             val context = applicationContext
-            val preferences = context.getSharedPreferences("WallsPrefs", Context.MODE_PRIVATE)
-            val screenSelection = preferences.getInt("WALLPAPER_SCREEN", 0)
+            val autoWallpaperConfig = autoWallpaperSettingsManager.loadConfig()
             
             val apiKey = wallpaperRepository.getApiKey()
-            val favoriteWallpapers = favoritesRepository.fetchFavoriteWallpapers(apiKey)
+            val wallpaperIds = when (autoWallpaperConfig.rotationSource) {
+                RotationSource.COLLECTIONS -> {
+                    val resolvedSources = if (autoWallpaperConfig.selectedSources.isEmpty()) {
+                        setOf(AutoWallpaperConfig.DEFAULT_ROTATION_COLLECTION)
+                    } else {
+                        autoWallpaperConfig.selectedSources
+                    }
+                    buildSet {
+                        if (resolvedSources.any { it.equals(AutoWallpaperConfig.DEFAULT_ROTATION_COLLECTION, ignoreCase = true) }) {
+                            addAll(favoritesCollectionManager.getFavoriteIds())
+                        }
+                        val collectionNames = resolvedSources
+                            .filterNot { it.equals(AutoWallpaperConfig.DEFAULT_ROTATION_COLLECTION, ignoreCase = true) }
+                            .toSet()
+                        addAll(favoritesCollectionManager.getCollectionWallpaperIds(collectionNames))
+                    }
+                }
+                else -> favoritesCollectionManager.getFavoriteIds()
+            }
+            val favoriteWallpapers = favoritesCollectionManager.fetchWallpapersByIds(apiKey, wallpaperIds)
 
             Log.d("AutoWallpaperWorker", "Fetched ${favoriteWallpapers.size} favorite wallpapers")
 
@@ -51,7 +74,13 @@ class AutoWallpaperWorker @AssistedInject constructor(
                 val wallpaperToSet = favoriteWallpapers.random()
                 Log.d("AutoWallpaperWorker", "Selected wallpaper: ${wallpaperToSet.id}")
 
-                setWallpaper(context, wallpaperToSet.path, wallpaperToSet.id, screenSelection)
+                setWallpaper(
+                    context = context,
+                    imageUrl = wallpaperToSet.path,
+                    wallpaperId = wallpaperToSet.id,
+                    thumbnailUrl = wallpaperToSet.thumbs.small,
+                    screen = autoWallpaperConfig.screenTarget.persistedValue
+                )
                 Result.success()
             }
         } catch (e: Exception) {
@@ -62,7 +91,13 @@ class AutoWallpaperWorker @AssistedInject constructor(
         }
     }
 
-    private suspend fun setWallpaper(context: Context, imageUrl: String, wallpaperId: String, screen: Int) {
+    private suspend fun setWallpaper(
+        context: Context,
+        imageUrl: String,
+        wallpaperId: String,
+        thumbnailUrl: String,
+        screen: Int
+    ) {
         withContext(Dispatchers.IO) {
             var connection: HttpURLConnection? = null
             var inputStream: InputStream? = null
@@ -76,7 +111,17 @@ class AutoWallpaperWorker @AssistedInject constructor(
                 val bitmap = BitmapFactory.decodeStream(inputStream)
                 if (bitmap != null) {
                     val croppedBitmap = cropBitmap(context, bitmap, wallpaperId)
-                    setWallpaperToScreen(context, croppedBitmap, screen)
+                    val applied = setWallpaperToScreen(context, croppedBitmap, screen)
+                    if (applied) {
+                        autoWallpaperSettingsManager.recordHistory(
+                            AutoWallpaperHistoryEntry(
+                                wallpaperId = wallpaperId,
+                                wallpaperName = "Wallpaper $wallpaperId",
+                                thumbnailUrl = thumbnailUrl,
+                                changedAtMillis = System.currentTimeMillis()
+                            )
+                        )
+                    }
                 } else {
                     Log.e("AutoWallpaperWorker", "Bitmap decoding failed")
                 }
@@ -104,13 +149,6 @@ class AutoWallpaperWorker @AssistedInject constructor(
         val right = (rightPercent * fullBitmap.width).toInt()
         val bottom = (bottomPercent * fullBitmap.height).toInt()
 
-        Log.d("AutoWallpaperWorker", """
-            Cropping wallpaper $wallpaperId:
-            Percentages: L=$leftPercent, T=$topPercent, R=$rightPercent, B=$bottomPercent
-            Actual pixels: L=$left, T=$top, R=$right, B=$bottom
-            Original dimensions: ${fullBitmap.width}x${fullBitmap.height}
-        """.trimIndent())
-
         if (leftPercent > 0f || topPercent > 0f || rightPercent < 1f || bottomPercent < 1f) {
             try {
                 val cropRect = Rect(left, top, right, bottom)
@@ -130,7 +168,7 @@ class AutoWallpaperWorker @AssistedInject constructor(
     }
 
     @SuppressLint("ObsoleteSdkInt")
-    private fun setWallpaperToScreen(context: Context, bitmap: Bitmap, screen: Int) {
+    private fun setWallpaperToScreen(context: Context, bitmap: Bitmap, screen: Int): Boolean {
         val wallpaperManager = WallpaperManager.getInstance(context)
         try {
             when (screen) {
@@ -143,8 +181,10 @@ class AutoWallpaperWorker @AssistedInject constructor(
                 }
             }
             Log.d("AutoWallpaperWorker", "Wallpaper set successfully to screen: $screen")
+            return true
         } catch (e: IOException) {
             Log.e("AutoWallpaperWorker", "Error setting wallpaper", e)
+            return false
         }
     }
 } 

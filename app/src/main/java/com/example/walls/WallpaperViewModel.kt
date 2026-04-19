@@ -4,8 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.walls.api.WallpaperDetail
+import com.example.walls.data.manager.FavoritesCollectionManager
 import com.example.walls.data.repository.FavoriteCollection
-import com.example.walls.data.repository.FavoritesRepository
 import com.example.walls.data.repository.WallpaperRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -20,7 +20,7 @@ enum class ThemeMode { LIGHT, DARK, SYSTEM }
 @HiltViewModel
 class WallpaperViewModel @Inject constructor(
     private val wallpaperRepository: WallpaperRepository,
-    private val favoritesRepository: FavoritesRepository
+    private val favoritesCollectionManager: FavoritesCollectionManager
 ) : ViewModel() {
 
     private val _favoriteWallpapers = MutableStateFlow<List<WallpaperDetail>>(emptyList())
@@ -60,6 +60,8 @@ class WallpaperViewModel @Inject constructor(
         wallpaperRepository.saveApiKey(key)
     }
 
+    fun getApiKey(): String = wallpaperRepository.getApiKey()
+
     init {
         loadFavorites()
         _themeMode.value = wallpaperRepository.getThemeMode()
@@ -69,7 +71,7 @@ class WallpaperViewModel @Inject constructor(
         viewModelScope.launch {
             val apiKey = wallpaperRepository.getApiKey()
             try {
-                val favorites = favoritesRepository.fetchFavoriteWallpapers(
+                val favorites = favoritesCollectionManager.fetchFavoriteWallpapers(
                     apiKey = apiKey,
                     collectionName = _selectedFavoritesCollection.value
                 )
@@ -103,8 +105,7 @@ class WallpaperViewModel @Inject constructor(
 
     fun loadFavorites() {
         viewModelScope.launch {
-            _favorites.value = favoritesRepository.loadFavorites()
-            _favoriteCollections.value = favoritesRepository.getCollections()
+            refreshFavoritesState()
         }
     }
 
@@ -114,11 +115,18 @@ class WallpaperViewModel @Inject constructor(
 
     fun toggleFavorite(id: String) {
         viewModelScope.launch {
-            favoritesRepository.toggleFavorite(id)
-            // Update the favorites state after toggling
-            _favorites.value = favoritesRepository.loadFavorites()
-            _favoriteCollections.value = favoritesRepository.getCollections()
+            favoritesCollectionManager.toggleFavorite(id)
+            refreshFavoritesState()
             Log.d("WallpaperViewModel", "Favorite toggled for $id, new favorites: ${_favorites.value}")
+        }
+    }
+
+    fun addFavorite(id: String) {
+        viewModelScope.launch {
+            val added = favoritesCollectionManager.addFavorite(id)
+            if (added) {
+                refreshFavoritesState()
+            }
         }
     }
 
@@ -128,14 +136,34 @@ class WallpaperViewModel @Inject constructor(
     }
 
     fun createFavoriteCollection(name: String): Boolean {
-        val created = favoritesRepository.createCollection(name)
-        _favoriteCollections.value = favoritesRepository.getCollections()
+        val created = favoritesCollectionManager.createCollection(name)
+        _favoriteCollections.value = favoritesCollectionManager.getCollections()
         return created
     }
 
+    fun deleteFavoriteCollection(name: String): Boolean {
+        val deleted = favoritesCollectionManager.deleteCollection(name)
+        _favoriteCollections.value = favoritesCollectionManager.getCollections()
+        if (_selectedFavoritesCollection.value == name) {
+            _selectedFavoritesCollection.value = null
+        }
+        return deleted
+    }
+
     fun addWallpaperToCollection(collectionName: String, wallpaperId: String) {
-        favoritesRepository.addToCollection(collectionName, wallpaperId)
-        _favoriteCollections.value = favoritesRepository.getCollections()
+        favoritesCollectionManager.addToCollection(collectionName, wallpaperId)
+        _favoriteCollections.value = favoritesCollectionManager.getCollections()
+    }
+
+    fun toggleWallpaperInCollection(collectionName: String, wallpaperId: String): Boolean {
+        val isNowIncluded = favoritesCollectionManager.toggleCollectionMembership(collectionName, wallpaperId)
+        _favoriteCollections.value = favoritesCollectionManager.getCollections()
+        return isNowIncluded
+    }
+
+    private fun refreshFavoritesState() {
+        _favorites.value = favoritesCollectionManager.loadFavorites()
+        _favoriteCollections.value = favoritesCollectionManager.getCollections()
     }
 
     var currentCategories: String

@@ -21,6 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -55,6 +57,7 @@ class CropActivity : AppCompatActivity() {
     private val viewModel: WallpaperViewModel by viewModels()
     private var currentWallpaperId: String? = null
     private var currentWallpaperUrl: String? = null
+    private var sourceCollectionName: String? = null
     private var cropImageView: CropImageView? = null
 
     @Inject lateinit var apiService: WallhavenApiService
@@ -66,6 +69,7 @@ class CropActivity : AppCompatActivity() {
 
         currentWallpaperId = intent.getStringExtra("WALLPAPER_ID")
         currentWallpaperUrl = intent.getStringExtra("IMAGE_URL")
+        sourceCollectionName = intent.getStringExtra("COLLECTION_NAME")?.takeIf { it.isNotBlank() }
 
         setContent {
             val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
@@ -75,7 +79,14 @@ class CropActivity : AppCompatActivity() {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
             val favorites by viewModel.favorites.collectAsStateWithLifecycle()
+            val favoriteCollections by viewModel.favoriteCollections.collectAsStateWithLifecycle()
             val isFavorite = favorites.contains(currentWallpaperId)
+            val isFromCollection = sourceCollectionName != null
+            val isInSourceCollection = sourceCollectionName?.let { collectionName ->
+                favoriteCollections.any { collection ->
+                    collection.name == collectionName && currentWallpaperId in collection.wallpaperIds
+                }
+            } ?: false
 
             WallsTheme(darkTheme = isDark) {
                 Scaffold(
@@ -97,11 +108,23 @@ class CropActivity : AppCompatActivity() {
                                     modifier = Modifier.weight(1f)
                                 ) { Text("Crop & Save") }
                                 IconButton(onClick = {
-                                    currentWallpaperId?.let { viewModel.toggleFavorite(it) }
+                                    currentWallpaperId?.let { wallpaperId ->
+                                        if (isFromCollection) {
+                                            sourceCollectionName?.let { collectionName ->
+                                                viewModel.toggleWallpaperInCollection(collectionName, wallpaperId)
+                                            }
+                                        } else {
+                                            viewModel.toggleFavorite(wallpaperId)
+                                        }
+                                    }
                                 }) {
                                     Icon(
-                                        if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                        contentDescription = "Favorite"
+                                        imageVector = if (isFromCollection) {
+                                            if (isInSourceCollection) Icons.Default.Star else Icons.Default.StarBorder
+                                        } else {
+                                            if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder
+                                        },
+                                        contentDescription = if (isFromCollection) "Collection" else "Favorite"
                                     )
                                 }
                             }

@@ -1,99 +1,243 @@
 package com.example.walls.ui.dialogs
 
-import android.app.Dialog
-import android.os.Bundle
-import android.util.Log
-import android.widget.CheckBox
-import androidx.appcompat.app.AlertDialog
-import androidx.fragment.app.DialogFragment
-import androidx.fragment.app.activityViewModels
-import com.example.walls.R
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.example.walls.WallpaperViewModel
-import dagger.hilt.android.AndroidEntryPoint
 
-@AndroidEntryPoint
-class FilterDialog : DialogFragment() {
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun FilterDialog(
+    viewModel: WallpaperViewModel,
+    useSearchFilters: Boolean,
+    onDismiss: () -> Unit
+) {
+    val initialState = remember(viewModel, useSearchFilters) {
+        FilterSelectionState.fromViewModel(viewModel, useSearchFilters)
+    }
+    var general by remember(initialState) { mutableStateOf(initialState.general) }
+    var anime by remember(initialState) { mutableStateOf(initialState.anime) }
+    var people by remember(initialState) { mutableStateOf(initialState.people) }
+    var sfw by remember(initialState) { mutableStateOf(initialState.sfw) }
+    var sketchy by remember(initialState) { mutableStateOf(initialState.sketchy) }
+    var nsfw by remember(initialState) { mutableStateOf(initialState.nsfw) }
+    val selectedResolutions = remember(initialState) { mutableStateListOf<String>().apply { addAll(initialState.resolutions) } }
+    val selectedRatios = remember(initialState) { mutableStateListOf<String>().apply { addAll(initialState.ratios) } }
+    val selectedColors = remember(initialState) { mutableStateListOf<String>().apply { addAll(initialState.colors) } }
+    val scrollState = rememberScrollState()
 
-    private val viewModel: WallpaperViewModel by activityViewModels()
-
-    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        val builder = AlertDialog.Builder(requireContext())
-        val view = layoutInflater.inflate(R.layout.dialog_filter, null)
-
-        // Set dialog title
-        builder.setTitle("Filter Wallpapers")
-
-        // Category checkboxes
-        val cbGeneral = view.findViewById<CheckBox>(R.id.cb_general)
-        val cbAnime = view.findViewById<CheckBox>(R.id.cb_anime)
-        val cbPeople = view.findViewById<CheckBox>(R.id.cb_people)
-        val cbSelectAllCategories = view.findViewById<CheckBox>(R.id.cb_select_all_categories)
-
-        // Purity checkboxes
-        val cbSfw = view.findViewById<CheckBox>(R.id.cb_sfw)
-        val cbSketchy = view.findViewById<CheckBox>(R.id.cb_sketchy)
-        val cbNsfw = view.findViewById<CheckBox>(R.id.cb_nsfw)
-        val cbSelectAllPurity = view.findViewById<CheckBox>(R.id.cb_select_all_purity)
-
-        // Set initial checkbox states
-        cbGeneral.isChecked = viewModel.isGeneralSelected()
-        cbAnime.isChecked = viewModel.isAnimeSelected()
-        cbPeople.isChecked = viewModel.isPeopleSelected()
-        cbSfw.isChecked = viewModel.isSfwSelected()
-        cbSketchy.isChecked = viewModel.isSketchySelected()
-        cbNsfw.isChecked = viewModel.isNsfwSelected()
-
-        // Update "Select All" checkboxes initial state
-        cbSelectAllCategories.isChecked = 
-            cbGeneral.isChecked && cbAnime.isChecked && cbPeople.isChecked
-        cbSelectAllPurity.isChecked = 
-            cbSfw.isChecked && cbSketchy.isChecked && cbNsfw.isChecked
-
-        // Set up "Select All" functionality for categories
-        cbSelectAllCategories.setOnCheckedChangeListener { _, isChecked ->
-            cbGeneral.isChecked = isChecked
-            cbAnime.isChecked = isChecked
-            cbPeople.isChecked = isChecked
+    fun applyState(state: FilterSelectionState) {
+        if (useSearchFilters) {
+            viewModel.updateSearchFilters(
+                categories = state.categoriesString,
+                purity = state.purityString,
+                resolution = state.resolutions.joinToString(","),
+                ratio = state.ratios.joinToString(","),
+                color = state.colors.joinToString(",")
+            )
+        } else {
+            viewModel.updateFilters(
+                categories = state.categoriesString,
+                purity = state.purityString,
+                resolution = state.resolutions.joinToString(","),
+                ratio = state.ratios.joinToString(","),
+                color = state.colors.joinToString(",")
+            )
         }
+    }
 
-        // Set up "Select All" functionality for purity
-        cbSelectAllPurity.setOnCheckedChangeListener { _, isChecked ->
-            cbSfw.isChecked = isChecked
-            cbSketchy.isChecked = isChecked
-            cbNsfw.isChecked = isChecked
-        }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Filter Wallpapers") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState)
+            ) {
+                Text("Categories")
+                Spacer(modifier = Modifier.height(8.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = general, onClick = { general = !general }, label = { Text("General") }, shape = RoundedCornerShape(16.dp))
+                    FilterChip(selected = anime, onClick = { anime = !anime }, label = { Text("Anime") }, shape = RoundedCornerShape(16.dp))
+                    FilterChip(selected = people, onClick = { people = !people }, label = { Text("People") }, shape = RoundedCornerShape(16.dp))
+                }
 
-        builder.setView(view)
-            .setPositiveButton("Apply") { _, _ ->
-                val categories = buildCategoriesString(
-                    cbGeneral.isChecked,
-                    cbAnime.isChecked,
-                    cbPeople.isChecked
-                )
-                val purity = buildPurityString(
-                    cbSfw.isChecked,
-                    cbSketchy.isChecked,
-                    cbNsfw.isChecked
-                )
-                Log.d("FilterDialog", "Applying filters: categories=$categories, purity=$purity")
-                viewModel.updateFilters(
-                    categories = categories,
-                    purity = purity,
-                    resolution = "",
-                    ratio = "",
-                    color = ""
-                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Text("Purity")
+                Spacer(modifier = Modifier.height(8.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = sfw, onClick = { sfw = !sfw }, label = { Text("SFW") }, shape = RoundedCornerShape(16.dp))
+                    FilterChip(selected = sketchy, onClick = { sketchy = !sketchy }, label = { Text("Sketchy") }, shape = RoundedCornerShape(16.dp))
+                    FilterChip(selected = nsfw, onClick = { nsfw = !nsfw }, label = { Text("NSFW") }, shape = RoundedCornerShape(16.dp))
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Text("Resolution")
+                Spacer(modifier = Modifier.height(8.dp))
+                FilterChip(selected = selectedResolutions.isEmpty(), onClick = { selectedResolutions.clear() }, label = { Text("Any") }, shape = RoundedCornerShape(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+                ResolutionGroup(title = "Wide", resolutions = wideResolutionOptions, selectedValues = selectedResolutions)
+                if (portraitResolutionOptions.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    ResolutionGroup(title = "Portrait", resolutions = portraitResolutionOptions, selectedValues = selectedResolutions)
+                }
+                if (squareResolutionOptions.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    ResolutionGroup(title = "Square", resolutions = squareResolutionOptions, selectedValues = selectedResolutions)
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Text("Ratio")
+                Spacer(modifier = Modifier.height(8.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = selectedRatios.isEmpty(), onClick = { selectedRatios.clear() }, label = { Text("Any") }, shape = RoundedCornerShape(16.dp))
+                    ratioOptions.filterNot { it == "Any" }.forEach { ratio ->
+                        FilterChip(
+                            selected = selectedRatios.contains(ratio),
+                            onClick = {
+                                if (selectedRatios.contains(ratio)) selectedRatios.remove(ratio) else selectedRatios.add(ratio)
+                            },
+                            label = { Text(ratio) },
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                    }
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Text("Color")
+                Spacer(modifier = Modifier.height(8.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FilterChip(selected = selectedColors.isEmpty(), onClick = { selectedColors.clear() }, label = { Text("Any") }, shape = RoundedCornerShape(16.dp))
+                    colorOptions.forEach { hex ->
+                        val swatchColor = parseColorOrFallback(hex)
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = if (selectedColors.contains(hex)) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent,
+                                    shape = CircleShape
+                                )
+                                .padding(3.dp)
+                                .clickable {
+                                    if (selectedColors.contains(hex)) selectedColors.remove(hex) else selectedColors.add(hex)
+                                }
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(2.dp)
+                                    .background(swatchColor, CircleShape)
+                                    .padding(15.dp)
+                            )
+                        }
+                    }
+                }
             }
-            .setNegativeButton("Cancel", null)
+        },
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = {
+                    val defaults = FilterSelectionState.defaults()
+                    general = defaults.general
+                    anime = defaults.anime
+                    people = defaults.people
+                    sfw = defaults.sfw
+                    sketchy = defaults.sketchy
+                    nsfw = defaults.nsfw
+                    selectedResolutions.clear()
+                    selectedRatios.clear()
+                    selectedColors.clear()
+                }) {
+                    Text("Reset")
+                }
+                TextButton(onClick = {
+                    applyState(
+                        FilterSelectionState(
+                            general = general,
+                            anime = anime,
+                            people = people,
+                            sfw = sfw,
+                            sketchy = sketchy,
+                            nsfw = nsfw,
+                            resolutions = selectedResolutions.toList(),
+                            ratios = selectedRatios.toList(),
+                            colors = selectedColors.toList()
+                        )
+                    )
+                    onDismiss()
+                }) {
+                    Text("Apply")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
 
-        return builder.create()
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ResolutionGroup(
+    title: String,
+    resolutions: List<String>,
+    selectedValues: MutableList<String>
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Spacer(modifier = Modifier.height(6.dp))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        resolutions.forEach { resolution ->
+            FilterChip(
+                selected = selectedValues.contains(resolution),
+                onClick = {
+                    if (selectedValues.contains(resolution)) selectedValues.remove(resolution) else selectedValues.add(resolution)
+                },
+                label = { Text(resolution) },
+                shape = RoundedCornerShape(16.dp)
+            )
+        }
     }
+}
 
-    private fun buildCategoriesString(general: Boolean, anime: Boolean, people: Boolean): String {
-        return "${if (general) "1" else "0"}${if (anime) "1" else "0"}${if (people) "1" else "0"}"
-    }
-
-    private fun buildPurityString(sfw: Boolean, sketchy: Boolean, nsfw: Boolean): String {
-        return "${if (sfw) "1" else "0"}${if (sketchy) "1" else "0"}${if (nsfw) "1" else "0"}"
+private fun parseColorOrFallback(hex: String): Color {
+    return try {
+        Color(android.graphics.Color.parseColor("#$hex"))
+    } catch (_: IllegalArgumentException) {
+        Color.Gray
     }
 }
