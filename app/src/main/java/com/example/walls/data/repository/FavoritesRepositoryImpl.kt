@@ -22,8 +22,27 @@ class FavoritesRepositoryImpl @Inject constructor(
         return favoritesManager.isFavorite(id)
     }
 
-    override suspend fun fetchFavoriteWallpapers(apiKey: String): List<WallpaperDetail> {
-        val favoriteIds = favoritesManager.getFavorites()
+    override fun getCollections(): List<FavoriteCollection> {
+        return favoritesManager.getCollections()
+    }
+
+    override fun createCollection(name: String): Boolean {
+        return favoritesManager.createCollection(name)
+    }
+
+    override fun addToCollection(collectionName: String, wallpaperId: String) {
+        favoritesManager.addToCollection(collectionName, wallpaperId)
+    }
+
+    override suspend fun fetchFavoriteWallpapers(apiKey: String, collectionName: String?): List<WallpaperDetail> {
+        val favoriteIds = if (collectionName.isNullOrBlank()) {
+            favoritesManager.getFavorites()
+        } else {
+            favoritesManager.getCollections()
+                .firstOrNull { it.name == collectionName }
+                ?.wallpaperIds
+                .orEmpty()
+        }
         return favoriteIds.mapNotNull { id ->
             try {
                 apiService.getWallpaperDetails(id, apiKey).data

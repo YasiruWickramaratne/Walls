@@ -24,9 +24,22 @@ class WallpaperRepositoryImpl @Inject constructor(
         sorting: String,
         categories: String,
         purity: String,
+        resolutions: String?,
+        ratios: String?,
+        colors: String?,
         page: Int
     ): WallpaperResponse {
-        return apiService.searchWallpapers(apiKey, query, sorting, categories, purity, page)
+        return apiService.searchWallpapers(
+            apiKey = apiKey,
+            query = query,
+            sorting = sorting,
+            categories = categories,
+            purity = purity,
+            resolutions = resolutions,
+            ratios = ratios,
+            colors = colors,
+            page = page
+        )
     }
 
     override suspend fun fetchWallpaperDetails(id: String, apiKey: String?): WallpaperDetail {
@@ -37,18 +50,36 @@ class WallpaperRepositoryImpl @Inject constructor(
         return sharedPreferences.getString("API_KEY", "") ?: ""
     }
 
-    override fun saveFilterSettings(categories: String, purity: String) {
+    override fun saveFilterSettings(
+        categories: String,
+        purity: String,
+        resolution: String,
+        ratio: String,
+        color: String
+    ) {
         sharedPreferences.edit().apply {
             putString("categories", categories)
             putString("purity", purity)
+            putString("resolution", resolution)
+            putString("ratio", ratio)
+            putString("color", color)
             apply()
         }
     }
 
-    override fun getFilterSettings(): Pair<String, String> {
+    override fun getFilterSettings(): SavedFilterSettings {
         val categories = sharedPreferences.getString("categories", "111") ?: "111"
         val purity = sharedPreferences.getString("purity", "100") ?: "100"
-        return Pair(categories, purity)
+        val resolution = sharedPreferences.getString("resolution", "") ?: ""
+        val ratio = sharedPreferences.getString("ratio", "") ?: ""
+        val color = sharedPreferences.getString("color", "") ?: ""
+        return SavedFilterSettings(
+            categories = categories,
+            purity = purity,
+            resolution = resolution,
+            ratio = ratio,
+            color = color
+        )
     }
 
     override fun saveApiKey(key: String) {

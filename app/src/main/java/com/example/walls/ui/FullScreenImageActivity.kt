@@ -28,6 +28,8 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -55,11 +57,13 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
@@ -319,6 +323,7 @@ class FullScreenImageActivity : AppCompatActivity() {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FullScreenImageScreen(
     sorting: String,
@@ -329,6 +334,7 @@ private fun FullScreenImageScreen(
 ) {
     val context = LocalContext.current
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
+    val favoriteCollections by viewModel.favoriteCollections.collectAsStateWithLifecycle()
     val detailsById by viewModel.wallpaperDetails.collectAsStateWithLifecycle()
     val detailsLoading by viewModel.wallpaperDetailsLoading.collectAsStateWithLifecycle()
     val wallpaperList by when (sorting) {
@@ -340,6 +346,7 @@ private fun FullScreenImageScreen(
     var currentIndex by remember { mutableIntStateOf(startIndex) }
     var isInfoSheetVisible by remember { mutableStateOf(false) }
     var isImageZoomed by remember { mutableStateOf(false) }
+    var showCollectionDialog by remember { mutableStateOf(false) }
     if (wallpaperList.isEmpty()) return
     if (currentIndex > wallpaperList.lastIndex) {
         currentIndex = wallpaperList.lastIndex
@@ -405,7 +412,12 @@ private fun FullScreenImageScreen(
                         onClick = { onSetWallpaper(currentWallpaper.path, WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK) },
                         modifier = Modifier.weight(1f)
                     ) { Text("Both") }
-                    IconButton(onClick = { viewModel.toggleFavorite(currentWallpaper.id) }) {
+                    Box(
+                        modifier = Modifier.combinedClickable(
+                            onClick = { viewModel.toggleFavorite(currentWallpaper.id) },
+                            onLongClick = { showCollectionDialog = true }
+                        )
+                    ) {
                         Icon(
                             if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                             contentDescription = "Favorite"
@@ -536,6 +548,77 @@ private fun FullScreenImageScreen(
             }
         }
     }
+
+    if (showCollectionDialog) {
+        AddToCollectionDialog(
+            collections = favoriteCollections.map { it.name },
+            wallpaperId = currentWallpaper.id,
+            onDismiss = { showCollectionDialog = false },
+            onCreateCollection = { name ->
+                val created = viewModel.createFavoriteCollection(name)
+                if (created) {
+                    viewModel.addWallpaperToCollection(name, currentWallpaper.id)
+                    Toast.makeText(context, "Added to $name", Toast.LENGTH_SHORT).show()
+                    showCollectionDialog = false
+                } else {
+                    Toast.makeText(context, "Collection name already exists", Toast.LENGTH_SHORT).show()
+                }
+            },
+            onAddToCollection = { name ->
+                viewModel.addWallpaperToCollection(name, currentWallpaper.id)
+                Toast.makeText(context, "Added to $name", Toast.LENGTH_SHORT).show()
+                showCollectionDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun AddToCollectionDialog(
+    collections: List<String>,
+    wallpaperId: String,
+    onDismiss: () -> Unit,
+    onCreateCollection: (String) -> Unit,
+    onAddToCollection: (String) -> Unit
+) {
+    var newCollectionName by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add to collection") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (collections.isNotEmpty()) {
+                    Text("Choose an existing collection")
+                    collections.forEach { collection ->
+                        TextButton(onClick = { onAddToCollection(collection) }) {
+                            Text(collection)
+                        }
+                    }
+                }
+                Text(if (collections.isEmpty()) "Create a new collection" else "Or create a new collection")
+                OutlinedTextField(
+                    value = newCollectionName,
+                    onValueChange = { newCollectionName = it },
+                    singleLine = true,
+                    label = { Text("Collection name") }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onCreateCollection(newCollectionName.trim()) },
+                enabled = newCollectionName.trim().isNotBlank()
+            ) {
+                Text("Create")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable

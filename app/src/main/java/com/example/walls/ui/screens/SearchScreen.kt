@@ -206,6 +206,7 @@ fun SearchScreen(
     if (showFilterDialog) {
         FilterDialog(
             viewModel = viewModel,
+            useSearchFilters = true,
             onDismiss = {
                 showFilterDialog = false
                 if (query.isNotBlank()) {

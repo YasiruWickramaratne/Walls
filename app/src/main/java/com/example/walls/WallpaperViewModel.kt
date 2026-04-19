@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.walls.api.WallpaperDetail
+import com.example.walls.data.repository.FavoriteCollection
 import com.example.walls.data.repository.FavoritesRepository
 import com.example.walls.data.repository.WallpaperRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,6 +28,12 @@ class WallpaperViewModel @Inject constructor(
 
     private val _favorites = MutableStateFlow<Set<String>>(setOf())
     val favorites: StateFlow<Set<String>> = _favorites
+
+    private val _favoriteCollections = MutableStateFlow<List<FavoriteCollection>>(emptyList())
+    val favoriteCollections: StateFlow<List<FavoriteCollection>> = _favoriteCollections
+
+    private val _selectedFavoritesCollection = MutableStateFlow<String?>(null)
+    val selectedFavoritesCollection: StateFlow<String?> = _selectedFavoritesCollection
 
     private val _errorMessage = MutableSharedFlow<String>()
     val errorMessage: SharedFlow<String> = _errorMessage
@@ -62,7 +69,10 @@ class WallpaperViewModel @Inject constructor(
         viewModelScope.launch {
             val apiKey = wallpaperRepository.getApiKey()
             try {
-                val favorites = favoritesRepository.fetchFavoriteWallpapers(apiKey)
+                val favorites = favoritesRepository.fetchFavoriteWallpapers(
+                    apiKey = apiKey,
+                    collectionName = _selectedFavoritesCollection.value
+                )
                 _favoriteWallpapers.value = favorites
             } catch (e: Exception) {
                 Log.e("WallpaperViewModel", "Error fetching favorite wallpapers", e)
@@ -94,6 +104,7 @@ class WallpaperViewModel @Inject constructor(
     fun loadFavorites() {
         viewModelScope.launch {
             _favorites.value = favoritesRepository.loadFavorites()
+            _favoriteCollections.value = favoritesRepository.getCollections()
         }
     }
 
@@ -106,17 +117,45 @@ class WallpaperViewModel @Inject constructor(
             favoritesRepository.toggleFavorite(id)
             // Update the favorites state after toggling
             _favorites.value = favoritesRepository.loadFavorites()
+            _favoriteCollections.value = favoritesRepository.getCollections()
             Log.d("WallpaperViewModel", "Favorite toggled for $id, new favorites: ${_favorites.value}")
         }
     }
 
+    fun selectFavoritesCollection(name: String?) {
+        _selectedFavoritesCollection.value = name
+        fetchFavoriteWallpapers()
+    }
+
+    fun createFavoriteCollection(name: String): Boolean {
+        val created = favoritesRepository.createCollection(name)
+        _favoriteCollections.value = favoritesRepository.getCollections()
+        return created
+    }
+
+    fun addWallpaperToCollection(collectionName: String, wallpaperId: String) {
+        favoritesRepository.addToCollection(collectionName, wallpaperId)
+        _favoriteCollections.value = favoritesRepository.getCollections()
+    }
+
     var currentCategories: String
     var currentPurity: String
+    var currentResolution: String
+    var currentRatio: String
+    var currentColor: String
+    var searchCategories: String = "111"
+    var searchPurity: String = "100"
+    var searchResolution: String = ""
+    var searchRatio: String = ""
+    var searchColor: String = ""
 
     init {
-        val (categories, purity) = wallpaperRepository.getFilterSettings()
-        currentCategories = categories
-        currentPurity = purity
+        val filters = wallpaperRepository.getFilterSettings()
+        currentCategories = filters.categories
+        currentPurity = filters.purity
+        currentResolution = filters.resolution
+        currentRatio = filters.ratio
+        currentColor = filters.color
     }
 
     // Separate loading states for each tab
@@ -184,6 +223,9 @@ class WallpaperViewModel @Inject constructor(
                     sorting = sorting,
                     categories = currentCategories,
                     purity = currentPurity,
+                    resolutions = currentResolution.ifBlank { null },
+                    ratios = currentRatio.ifBlank { null },
+                    colors = currentColor.ifBlank { null },
                     page = currentPage
                 )
 
@@ -213,7 +255,13 @@ class WallpaperViewModel @Inject constructor(
         }
     }
 
-    fun updateFilters(categories: String, purity: String) {
+    fun updateFilters(
+        categories: String,
+        purity: String,
+        resolution: String,
+        ratio: String,
+        color: String
+    ) {
 
 
 
@@ -221,6 +269,9 @@ class WallpaperViewModel @Inject constructor(
             Log.d("WallpaperViewModel", "Updating filters: categories=$categories, purity=$purity")
             currentCategories = categories
             currentPurity = purity
+            currentResolution = resolution
+            currentRatio = ratio
+            currentColor = color
 
             if (isNsfwSelected()) {
                 val apiKey = wallpaperRepository.getApiKey()
@@ -234,7 +285,7 @@ class WallpaperViewModel @Inject constructor(
                 //Log.d("WallpaperViewModel", "API key verified for NSFW content")
             }
 
-            wallpaperRepository.saveFilterSettings(categories, purity)
+            wallpaperRepository.saveFilterSettings(categories, purity, resolution, ratio, color)
 
             // Clear caches and reset pagination
             resetPagination()
@@ -256,6 +307,51 @@ class WallpaperViewModel @Inject constructor(
     fun isSfwSelected() = currentPurity[0] == '1'
     fun isSketchySelected() = currentPurity[1] == '1'
     fun isNsfwSelected() = currentPurity[2] == '1'
+    fun isSearchGeneralSelected() = searchCategories[0] == '1'
+    fun isSearchAnimeSelected() = searchCategories[1] == '1'
+    fun isSearchPeopleSelected() = searchCategories[2] == '1'
+    fun isSearchSfwSelected() = searchPurity[0] == '1'
+    fun isSearchSketchySelected() = searchPurity[1] == '1'
+    fun isSearchNsfwSelected() = searchPurity[2] == '1'
+
+    fun updateSearchFilters(
+        categories: String,
+        purity: String,
+        resolution: String,
+        ratio: String,
+        color: String
+    ) {
+        searchCategories = categories
+        searchPurity = purity
+        searchResolution = resolution
+        searchRatio = ratio
+        searchColor = color
+        currentSearchPage = 1
+        hasSearchMorePages = true
+        lastFetchedSearchQuery = ""
+        _searchLoading.value = false
+        _hasCompletedSearch.value = false
+        cachedSearchWallpapers.clear()
+        _searchWallpapers.value = emptyList()
+    }
+
+    fun resetSearchFilters(clearResults: Boolean = false) {
+        searchCategories = "111"
+        searchPurity = "100"
+        searchResolution = ""
+        searchRatio = ""
+        searchColor = ""
+        if (clearResults) {
+            currentSearchPage = 1
+            hasSearchMorePages = true
+            lastFetchedSearchQuery = ""
+            _searchLoading.value = false
+            _hasCompletedSearch.value = false
+            _currentSearchQuery.value = ""
+            cachedSearchWallpapers.clear()
+            _searchWallpapers.value = emptyList()
+        }
+    }
 
     fun resetPagination() {
         currentRecentPage = 1
@@ -392,8 +488,11 @@ class WallpaperViewModel @Inject constructor(
                     apiKey = wallpaperRepository.getApiKey(),
                     query = normalizedQuery,
                     sorting = "relevance",
-                    categories = currentCategories,
-                    purity = currentPurity,
+                    categories = searchCategories,
+                    purity = searchPurity,
+                    resolutions = searchResolution.ifBlank { null },
+                    ratios = searchRatio.ifBlank { null },
+                    colors = searchColor.ifBlank { null },
                     page = currentSearchPage
                 )
                 if (!isLoadingMore || isNewQuery) {

@@ -31,6 +31,7 @@ class SearchActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val initialQuery = intent.getStringExtra(EXTRA_INITIAL_QUERY).orEmpty().trim()
+        viewModel.resetSearchFilters(clearResults = false)
 
         if (initialQuery.isNotBlank()) {
             viewModel.fetchSearchWallpapers(initialQuery)
@@ -51,5 +52,12 @@ class SearchActivity : AppCompatActivity() {
                 )
             }
         }
+    }
+
+    override fun onDestroy() {
+        if (isFinishing) {
+            viewModel.resetSearchFilters(clearResults = true)
+        }
+        super.onDestroy()
     }
 }

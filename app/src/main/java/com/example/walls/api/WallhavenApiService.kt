@@ -13,6 +13,9 @@ interface WallhavenApiService {
         @Query("sorting") sorting: String,
         @Query("categories") categories: String,
         @Query("purity") purity: String,
+        @Query("resolutions") resolutions: String? = null,
+        @Query("ratios") ratios: String? = null,
+        @Query("colors") colors: String? = null,
         @Query("page") page: Int = 1
     ): WallpaperResponse
 

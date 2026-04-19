@@ -10,6 +10,9 @@ interface WallpaperRepository {
         sorting: String,
         categories: String,
         purity: String,
+        resolutions: String?,
+        ratios: String?,
+        colors: String?,
         page: Int
     ): WallpaperResponse
 
@@ -20,8 +23,22 @@ interface WallpaperRepository {
 
     fun getApiKey(): String
     fun saveApiKey(key: String)
-    fun saveFilterSettings(categories: String, purity: String)
-    fun getFilterSettings(): Pair<String, String>
+    fun saveFilterSettings(
+        categories: String,
+        purity: String,
+        resolution: String,
+        ratio: String,
+        color: String
+    )
+    fun getFilterSettings(): SavedFilterSettings
     fun saveThemeMode(modeName: String)
     fun getThemeMode(): com.example.walls.ThemeMode
 }
+
+data class SavedFilterSettings(
+    val categories: String,
+    val purity: String,
+    val resolution: String,
+    val ratio: String,
+    val color: String
+)

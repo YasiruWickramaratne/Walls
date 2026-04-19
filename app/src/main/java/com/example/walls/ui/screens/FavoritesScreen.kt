@@ -1,17 +1,25 @@
 package com.example.walls.ui.screens
 
 import android.content.Intent
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -35,6 +43,9 @@ import com.example.walls.ui.components.WallpaperCard
 fun FavoritesScreen(viewModel: WallpaperViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val favoriteWallpapers by viewModel.favoriteWallpapers.collectAsStateWithLifecycle()
+    val collections by viewModel.favoriteCollections.collectAsStateWithLifecycle()
+    val selectedCollection by viewModel.selectedFavoritesCollection.collectAsStateWithLifecycle()
+    val chipScroll = rememberScrollState()
 
     val wallpapers = favoriteWallpapers.map { detail ->
         Wallpaper(
@@ -52,7 +63,7 @@ fun FavoritesScreen(viewModel: WallpaperViewModel, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Favorites") },
+                title = { Text(selectedCollection ?: "Favorites") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -61,35 +72,61 @@ fun FavoritesScreen(viewModel: WallpaperViewModel, onBack: () -> Unit) {
             )
         }
     ) { innerPadding ->
-        if (wallpapers.isEmpty()) {
-            Box(
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .horizontalScroll(chipScroll)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("No favorites yet")
-            }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                items(wallpapers, key = { it.id }) { wallpaper ->
-                    WallpaperCard(
-                        wallpaper = wallpaper,
-                        onClick = {
-                            Intent(context, CropActivity::class.java).apply {
-                                putExtra("WALLPAPER_ID", wallpaper.id)
-                                putExtra("IMAGE_URL", wallpaper.path)
-                            }.also { context.startActivity(it) }
-                        }
+                FilterChip(
+                    selected = selectedCollection == null,
+                    onClick = { viewModel.selectFavoritesCollection(null) },
+                    label = { Text("Default") }
+                )
+                collections.forEach { collection ->
+                    FilterChip(
+                        selected = selectedCollection == collection.name,
+                        onClick = { viewModel.selectFavoritesCollection(collection.name) },
+                        label = { Text(collection.name) }
                     )
+                }
+            }
+
+            if (wallpapers.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        if (selectedCollection == null) "No favorites yet"
+                        else "No wallpapers in ${selectedCollection}"
+                    )
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    contentPadding = PaddingValues(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(wallpapers, key = { it.id }) { wallpaper ->
+                        WallpaperCard(
+                            wallpaper = wallpaper,
+                            onClick = {
+                                Intent(context, CropActivity::class.java).apply {
+                                    putExtra("WALLPAPER_ID", wallpaper.id)
+                                    putExtra("IMAGE_URL", wallpaper.path)
+                                }.also { context.startActivity(it) }
+                            }
+                        )
+                    }
                 }
             }
         }

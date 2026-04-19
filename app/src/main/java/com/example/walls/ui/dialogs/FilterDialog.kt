@@ -76,7 +76,13 @@ class FilterDialog : DialogFragment() {
                     cbNsfw.isChecked
                 )
                 Log.d("FilterDialog", "Applying filters: categories=$categories, purity=$purity")
-                viewModel.updateFilters(categories, purity)
+                viewModel.updateFilters(
+                    categories = categories,
+                    purity = purity,
+                    resolution = "",
+                    ratio = "",
+                    color = ""
+                )
             }
             .setNegativeButton("Cancel", null)
 
