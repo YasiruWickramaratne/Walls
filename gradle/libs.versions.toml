@@ -1,5 +1,5 @@
 [versions]
-agp = "8.7.3"
+agp = "9.1.1"
 androidImageCropper = "4.6.0"
 constraintlayout = "2.2.0"
 drawerlayout = "1.2.0"
@@ -16,6 +16,7 @@ retrofit = "2.9.0"
 viewpager2 = "1.1.0"
 subsampling-scale-image-view = "3.10.0"
 workRuntimeKtx = "2.8.1"
+kotlin = "2.2.10"
 
 [libraries]
 
@@ -46,6 +47,8 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 material3 = { module = "androidx.compose.material3:material3" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 subsampling-scale-image-view = { group = "com.davemorrissey.labs", name = "subsampling-scale-image-view", version.ref = "subsampling-scale-image-view" }
+[plugins]
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 
 
 

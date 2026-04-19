@@ -5,26 +5,23 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
+    alias(libs.plugins.kotlin.compose)
 
 }
 
 android {
     namespace = "com.example.walls"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.walls"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.3"
     }
 
     // Add this block to enable BuildConfig
@@ -69,10 +66,10 @@ dependencies {
     implementation(libs.android.image.cropper)
 
     implementation(libs.androidx.work.runtime.ktx)
-    implementation("com.google.dagger:hilt-android:2.47")
-    implementation("androidx.hilt:hilt-work:1.1.0")
-    ksp("com.google.dagger:hilt-android-compiler:2.47")
-    ksp("androidx.hilt:hilt-compiler:1.1.0")
+    implementation("com.google.dagger:hilt-android:2.59.2")
+    implementation("androidx.hilt:hilt-work:1.2.0")
+    ksp("com.google.dagger:hilt-android-compiler:2.59.2")
+    ksp("androidx.hilt:hilt-compiler:1.2.0")
     implementation(libs.androidx.hilt.navigation.compose)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -81,16 +78,14 @@ dependencies {
 
 
     implementation("com.google.android.material:material:1.11.0")
-    implementation(platform("androidx.compose:compose-bom:2022.10.00"))
+    implementation(platform("androidx.compose:compose-bom:2024.09.00"))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation(platform("androidx.compose:compose-bom:1.4.3"))
-    implementation(platform("androidx.compose:compose-bom:2023.03.00"))
     implementation(libs.androidx.drawerlayout)
     implementation(libs.material3)
-    androidTestImplementation(platform("androidx.compose:compose-bom:1.4.3"))
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.09.00"))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
