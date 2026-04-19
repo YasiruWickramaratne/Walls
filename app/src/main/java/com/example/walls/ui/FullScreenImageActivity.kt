@@ -1,144 +1,171 @@
 package com.example.walls.ui
 
-
 import android.app.WallpaperManager
 import android.graphics.Bitmap
-import android.graphics.drawable.Drawable
+import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
-import com.bumptech.glide.Glide
-import com.bumptech.glide.request.target.CustomTarget
-import com.bumptech.glide.request.transition.Transition
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.imageLoader
+import coil.request.ImageRequest
 import com.davemorrissey.labs.subscaleview.ImageSource
-import com.example.walls.databinding.ActivityFullScreenImageBinding
+import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
+import com.example.walls.ThemeMode
+import com.example.walls.WallpaperViewModel
+import com.example.walls.ui.theme.WallsTheme
+import androidx.lifecycle.lifecycleScope
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.activity.viewModels
-import com.example.walls.R
-import com.example.walls.WallpaperViewModel
-import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.collectLatest
 
 @AndroidEntryPoint
 class FullScreenImageActivity : AppCompatActivity() {
-    private lateinit var binding: ActivityFullScreenImageBinding
+
     private val viewModel: WallpaperViewModel by viewModels()
-    private var currentWallpaperId: String? = null
-    private var currentWallpaperUrl: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityFullScreenImageBinding.inflate(layoutInflater)
-        setContentView(binding.root)
 
-        currentWallpaperId = intent.getStringExtra("WALLPAPER_ID")
-        currentWallpaperUrl = intent.getStringExtra("IMAGE_URL")
+        val wallpaperId = intent.getStringExtra("WALLPAPER_ID")
+        val imageUrl = intent.getStringExtra("IMAGE_URL")
 
-        if (currentWallpaperId == null || currentWallpaperUrl == null) {
+        if (wallpaperId == null || imageUrl == null) {
             Toast.makeText(this, "Error loading image", Toast.LENGTH_SHORT).show()
             finish()
             return
         }
 
-        setupViews()
-        loadImage()
-        setupFavoriteButton()
-        observeFavorites()
-    }
-
-    private fun setupViews() {
-        binding.setHomeScreenButton.setOnClickListener {
-            setWallpaper(currentWallpaperUrl!!, WallpaperManager.FLAG_SYSTEM)
-        }
-
-        binding.setLockScreenButton.setOnClickListener {
-            setWallpaper(currentWallpaperUrl!!, WallpaperManager.FLAG_LOCK)
-        }
-
-        binding.setBothScreensButton.setOnClickListener {
-            setWallpaper(currentWallpaperUrl!!, WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK)
-        }
-    }
-
-    private fun loadImage() {
-        Glide.with(this)
-            .asBitmap()
-            .load(currentWallpaperUrl)
-            .into(object : CustomTarget<Bitmap>() {
-                override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
-                    binding.fullScreenImageView.setImage(ImageSource.bitmap(resource))
-                }
-
-                override fun onLoadCleared(placeholder: Drawable?) {}
-
-                override fun onLoadFailed(errorDrawable: Drawable?) {
-                    super.onLoadFailed(errorDrawable)
-                    Toast.makeText(this@FullScreenImageActivity, "Failed to load image", Toast.LENGTH_SHORT).show()
-                }
-            })
-    }
-
-    private fun setupFavoriteButton() {
-        currentWallpaperId?.let { id ->
-            updateFavoriteButtonState(viewModel.isFavorite(id))
-            binding.favoriteButton.setOnClickListener {
-                viewModel.toggleFavorite(id)
+        setContent {
+            val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+            val isDark = when (themeMode) {
+                ThemeMode.DARK -> true
+                ThemeMode.LIGHT -> false
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+            WallsTheme(darkTheme = isDark) {
+                FullScreenImageScreen(
+                    wallpaperId = wallpaperId,
+                    imageUrl = imageUrl,
+                    viewModel = viewModel,
+                    onSetWallpaper = { flag -> setWallpaper(imageUrl, flag) }
+                )
             }
         }
-    }
-
-    private fun observeFavorites() {
-        lifecycleScope.launch {
-            viewModel.favorites.collectLatest { favorites ->
-                currentWallpaperId?.let { id ->
-                    Log.d("FullScreenImageActivity", "Favorites updated: $favorites, current id: $id")
-                    updateFavoriteButtonState(favorites.contains(id))
-                }
-            }
-        }
-    }
-
-    private fun updateFavoriteButtonState(isFavorite: Boolean) {
-        Log.d("FullScreenImageActivity", "Updating favorite button state: $isFavorite")
-        binding.favoriteButton.setImageResource(
-            if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_border
-        )
     }
 
     private fun setWallpaper(imageUrl: String, flag: Int) {
+        val context = this
         lifecycleScope.launch {
             try {
-                val bitmap = withContext(Dispatchers.IO) {
-                    Glide.with(this@FullScreenImageActivity)
-                        .asBitmap()
-                        .load(imageUrl)
-                        .submit()
-                        .get()
+                val bitmap: Bitmap = withContext(Dispatchers.IO) {
+                    val request = ImageRequest.Builder(context)
+                        .data(imageUrl)
+                        .allowHardware(false)
+                        .build()
+                    val result = context.imageLoader.execute(request)
+                    (result.drawable as BitmapDrawable).bitmap
                 }
-
-                val wallpaperManager = WallpaperManager.getInstance(this@FullScreenImageActivity)
-
                 withContext(Dispatchers.IO) {
-                    wallpaperManager.setBitmap(bitmap, null, true, flag)
+                    WallpaperManager.getInstance(context).setBitmap(bitmap, null, true, flag)
                 }
-
-                Toast.makeText(
-                    this@FullScreenImageActivity,
-                    "Wallpaper set successfully",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(context, "Wallpaper set successfully", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Toast.makeText(
-                    this@FullScreenImageActivity,
-                    "Failed to set wallpaper",
-                    Toast.LENGTH_SHORT
-                ).show()
-                e.printStackTrace()
+                Toast.makeText(context, "Failed to set wallpaper", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+}
+
+@Composable
+private fun FullScreenImageScreen(
+    wallpaperId: String,
+    imageUrl: String,
+    viewModel: WallpaperViewModel,
+    onSetWallpaper: (Int) -> Unit
+) {
+    val context = LocalContext.current
+    val favorites by viewModel.favorites.collectAsStateWithLifecycle()
+    val isFavorite = favorites.contains(wallpaperId)
+
+    var imageViewRef by remember { mutableStateOf<SubsamplingScaleImageView?>(null) }
+
+    LaunchedEffect(imageUrl) {
+        val request = ImageRequest.Builder(context)
+            .data(imageUrl)
+            .allowHardware(false)
+            .target { drawable ->
+                val bitmap = (drawable as BitmapDrawable).bitmap
+                imageViewRef?.setImage(ImageSource.bitmap(bitmap))
+            }
+            .build()
+        context.imageLoader.enqueue(request)
+    }
+
+    Scaffold(
+        bottomBar = {
+            BottomAppBar {
+                Row(modifier = Modifier.fillMaxWidth().padding()) {
+                    TextButton(
+                        onClick = { onSetWallpaper(WallpaperManager.FLAG_SYSTEM) },
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Home") }
+                    TextButton(
+                        onClick = { onSetWallpaper(WallpaperManager.FLAG_LOCK) },
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Lock") }
+                    TextButton(
+                        onClick = { onSetWallpaper(WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK) },
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Both") }
+                    IconButton(onClick = { viewModel.toggleFavorite(wallpaperId) }) {
+                        Icon(
+                            if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = "Favorite"
+                        )
+                    }
+                }
+            }
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            AndroidView(
+                factory = { ctx ->
+                    SubsamplingScaleImageView(ctx).also { imageViewRef = it }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
         }
     }
 }

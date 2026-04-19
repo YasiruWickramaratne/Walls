@@ -12,6 +12,9 @@ interface WallpaperRepository {
     ): WallpaperResponse
 
     fun getApiKey(): String
+    fun saveApiKey(key: String)
     fun saveFilterSettings(categories: String, purity: String)
     fun getFilterSettings(): Pair<String, String>
+    fun saveThemeMode(modeName: String)
+    fun getThemeMode(): com.example.walls.ThemeMode
 }

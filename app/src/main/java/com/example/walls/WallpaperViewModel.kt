@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class ThemeMode { LIGHT, DARK, SYSTEM }
+
 @HiltViewModel
 class WallpaperViewModel @Inject constructor(
     private val wallpaperRepository: WallpaperRepository,
@@ -29,8 +31,25 @@ class WallpaperViewModel @Inject constructor(
     private val _errorMessage = MutableSharedFlow<String>()
     val errorMessage: SharedFlow<String> = _errorMessage
 
+    private val _themeMode = MutableStateFlow(ThemeMode.SYSTEM)
+    val themeMode: StateFlow<ThemeMode> = _themeMode
+
+    fun setThemeMode(mode: ThemeMode) {
+        _themeMode.value = mode
+        wallpaperRepository.saveThemeMode(mode.name)
+    }
+
+    fun refreshThemeMode() {
+        _themeMode.value = wallpaperRepository.getThemeMode()
+    }
+
+    fun saveApiKey(key: String) {
+        wallpaperRepository.saveApiKey(key)
+    }
+
     init {
         loadFavorites()
+        _themeMode.value = wallpaperRepository.getThemeMode()
     }
 
     fun fetchFavoriteWallpapers() {

@@ -8,7 +8,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
+import coil.load
 import com.example.walls.R
 import com.example.walls.Wallpaper
 
@@ -31,11 +31,11 @@ class WallpaperAdapter(private val onItemClick: (Wallpaper) -> Unit) :
         private val titleTextView: TextView = itemView.findViewById(R.id.wallpaper_title_text_view)
 
         fun bind(wallpaper: Wallpaper) {
-            Glide.with(itemView.context)
-                .load(wallpaper.thumbs.small)
-                .placeholder(R.drawable.placeholder_image)
-                .error(R.drawable.error_image)
-                .into(imageView)
+            imageView.load(wallpaper.thumbs.small) {
+                crossfade(true)
+                placeholder(R.drawable.placeholder_image)
+                error(R.drawable.error_image)
+            }
 
             titleTextView.text = wallpaper.id
 

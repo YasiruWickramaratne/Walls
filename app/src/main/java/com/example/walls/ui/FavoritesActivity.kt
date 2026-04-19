@@ -1,83 +1,39 @@
 package com.example.walls.ui
 
-import android.content.Intent
 import android.os.Bundle
-import android.util.Log
-import android.view.View
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.GridLayoutManager
-import com.example.walls.Thumbs
-import com.example.walls.Wallpaper
-import com.example.walls.ui.adapters.WallpaperAdapter
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.walls.ThemeMode
 import com.example.walls.WallpaperViewModel
-import com.example.walls.databinding.ActivityFavoritesBinding
+import com.example.walls.ui.screens.FavoritesScreen
+import com.example.walls.ui.theme.WallsTheme
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class FavoritesActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityFavoritesBinding
     private val viewModel: WallpaperViewModel by viewModels()
-    private lateinit var adapter: WallpaperAdapter
-
-    private val cropActivityResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == RESULT_OK) {
-            // Refresh the list if the favorite state was changed in CropActivity
-            viewModel.fetchFavoriteWallpapers()
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityFavoritesBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-
-        adapter = WallpaperAdapter { wallpaper ->
-            Intent(this, CropActivity::class.java).apply {
-                putExtra("WALLPAPER_ID", wallpaper.id)
-                putExtra("IMAGE_URL", wallpaper.url)
-            }.also {
-                cropActivityResultLauncher.launch(it)
+        setContent {
+            val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+            val isDark = when (themeMode) {
+                ThemeMode.DARK -> true
+                ThemeMode.LIGHT -> false
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+            WallsTheme(darkTheme = isDark) {
+                FavoritesScreen(
+                    viewModel = viewModel,
+                    onBack = { finish() }
+                )
             }
         }
-
-        binding.favoritesRecyclerView.apply {
-            layoutManager = GridLayoutManager(this@FavoritesActivity, 2)
-            adapter = this@FavoritesActivity.adapter
-        }
-
-        // Load favorites when the activity is created
-        viewModel.loadFavorites()
-
-        lifecycleScope.launch {
-            viewModel.favoriteWallpapers.collectLatest { wallpaperDetails ->
-                val wallpapers = wallpaperDetails.map { detail ->
-                    Wallpaper(
-                        id = detail.id,
-                        url = detail.url,
-                        path = detail.path,
-                        thumbs = Thumbs(
-                            large = detail.thumbs.large,
-                            original = detail.thumbs.original,
-                            small = detail.thumbs.small
-                        )
-                    )
-                }
-                updateEmptyState(wallpapers.isEmpty())
-                adapter.submitList(wallpapers)
-            }
-        }
-        Log.d("FavoritesActivity", "Fetching favorite wallpapers")
-    }
-
-    private fun updateEmptyState(isEmpty: Boolean) {
-        binding.favoritesRecyclerView.visibility = if (isEmpty) View.GONE else View.VISIBLE
-        binding.emptyStateTextView.visibility = if (isEmpty) View.VISIBLE else View.GONE
     }
 
     override fun onResume() {

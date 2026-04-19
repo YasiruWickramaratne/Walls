@@ -2,7 +2,6 @@
 plugins {
 
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
     alias(libs.plugins.kotlin.compose)
@@ -11,12 +10,12 @@ plugins {
 
 android {
     namespace = "com.example.walls"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.example.walls"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
@@ -27,7 +26,6 @@ android {
     // Add this block to enable BuildConfig
     buildFeatures {
         compose = true
-        viewBinding = true
         buildConfig = true
     }
 
@@ -46,8 +44,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
+    kotlin {
+        compilerOptions {
+            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+        }
     }
 }
 
@@ -57,11 +57,12 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.livedata.ktx)
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation(libs.androidx.fragment.ktx)
     implementation(libs.androidx.viewpager2)
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
-    implementation(libs.glide)
+    implementation(libs.coil.compose)
     implementation(libs.subsampling.scale.image.view)
     implementation(libs.android.image.cropper)
 
@@ -79,6 +80,7 @@ dependencies {
 
     implementation("com.google.android.material:material:1.11.0")
     implementation(platform("androidx.compose:compose-bom:2024.09.00"))
+    implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)

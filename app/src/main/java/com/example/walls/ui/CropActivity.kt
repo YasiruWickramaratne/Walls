@@ -1,196 +1,209 @@
 package com.example.walls.ui
 
 import android.content.Context
-import android.graphics.BitmapFactory
+import android.graphics.Bitmap
 import android.graphics.Rect
+import android.graphics.drawable.BitmapDrawable
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import com.example.walls.R
-import com.example.walls.data.repository.WallpaperRepository
+import coil.imageLoader
+import coil.request.ImageRequest
+import com.canhub.cropper.CropImageView
+import com.example.walls.ThemeMode
 import com.example.walls.WallpaperViewModel
 import com.example.walls.api.WallhavenApiService
-import com.example.walls.databinding.ActivityCropBinding
+import com.example.walls.data.repository.WallpaperRepository
+import com.example.walls.ui.theme.WallsTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.InputStream
-import java.net.HttpURLConnection
-import java.net.URL
+import java.io.File
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class CropActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityCropBinding
     private val viewModel: WallpaperViewModel by viewModels()
     private var currentWallpaperId: String? = null
     private var currentWallpaperUrl: String? = null
-    private var isFavorite: Boolean = false
-    private var favoriteStateChanged: Boolean = false // To track if the favorite state was changed
+    private var cropImageView: CropImageView? = null
 
-    @Inject
-    lateinit var apiService: WallhavenApiService
+    @Inject lateinit var apiService: WallhavenApiService
+    @Inject lateinit var wallpaperRepository: WallpaperRepository
 
-    @Inject
-    lateinit var wallpaperRepository: WallpaperRepository
-
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityCropBinding.inflate(layoutInflater)
-        setContentView(binding.root)
 
         currentWallpaperId = intent.getStringExtra("WALLPAPER_ID")
         currentWallpaperUrl = intent.getStringExtra("IMAGE_URL")
 
-        Log.d("CropActivity", "onCreate: WALLPAPER_ID = $currentWallpaperId")
+        setContent {
+            val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+            val isDark = when (themeMode) {
+                ThemeMode.DARK -> true
+                ThemeMode.LIGHT -> false
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+            val favorites by viewModel.favorites.collectAsStateWithLifecycle()
+            val isFavorite = favorites.contains(currentWallpaperId)
 
-        setupFavoriteButton()
-        setupBackButton()
-
-        // Set the OnCropImageCompleteListener here
-        binding.cropImageView.setOnCropImageCompleteListener { _, result ->
-            val croppedUri = result.uriContent
-            Log.d("CropActivity", "Cropped image URI: $croppedUri")
-            Toast.makeText(this@CropActivity, "Cropped image saved!", Toast.LENGTH_SHORT).show()
-            saveCropRect() // Save the crop rect after a successful crop
+            WallsTheme(darkTheme = isDark) {
+                Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = { Text("Crop Wallpaper") },
+                            navigationIcon = {
+                                IconButton(onClick = { onBackPressedDispatcher.onBackPressed() }) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                }
+                            }
+                        )
+                    },
+                    bottomBar = {
+                        BottomAppBar {
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                TextButton(
+                                    onClick = { cropImageView?.croppedImageAsync() },
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("Crop & Save") }
+                                IconButton(onClick = {
+                                    currentWallpaperId?.let { viewModel.toggleFavorite(it) }
+                                }) {
+                                    Icon(
+                                        if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        contentDescription = "Favorite"
+                                    )
+                                }
+                            }
+                        }
+                    }
+                ) { innerPadding ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    ) {
+                        AndroidView(
+                            factory = { ctx ->
+                                CropImageView(ctx).also { view ->
+                                    cropImageView = view
+                                    view.setOnCropImageCompleteListener { _, result ->
+                                        if (result.isSuccessful) {
+                                            Toast.makeText(ctx, "Cropped image saved!", Toast.LENGTH_SHORT).show()
+                                            saveCropRect()
+                                        }
+                                    }
+                                    view.setOnSetImageUriCompleteListener { _, _, error ->
+                                        if (error == null) loadSavedCropRect()
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+            }
         }
 
-        loadWallpaperDetails()
-        setupViews()
-    }
-
-    private fun setupBackButton() {
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        if (!currentWallpaperUrl.isNullOrEmpty()) {
+            loadImageToCropView()
+        } else {
+            loadWallpaperDetails()
+        }
     }
 
     private fun loadWallpaperDetails() {
-        lifecycleScope.launch(Dispatchers.IO) {
+        lifecycleScope.launch {
             try {
                 val apiKey = wallpaperRepository.getApiKey()
                 val response = apiService.getWallpaperDetails(currentWallpaperId!!, apiKey)
-                withContext(Dispatchers.Main) {
-                    currentWallpaperUrl = response.data.path
-                    loadImageToCropView()
-                }
+                currentWallpaperUrl = response.data.path
+                loadImageToCropView()
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@CropActivity, "Error fetching image details", Toast.LENGTH_SHORT).show()
-                    finish()
-                }
+                Log.e("CropActivity", "Error fetching wallpaper details", e)
+                Toast.makeText(this@CropActivity, "Error fetching image details", Toast.LENGTH_SHORT).show()
+                finish()
             }
         }
     }
 
     private fun loadImageToCropView() {
-        currentWallpaperUrl?.let { urlString ->
-            lifecycleScope.launch(Dispatchers.IO) {
-                var connection: HttpURLConnection? = null
-                var inputStream: InputStream? = null
-                try {
-                    val url = URL(urlString)
-                    connection = url.openConnection() as HttpURLConnection
-                    connection.requestMethod = "GET"
-                    connection.setRequestProperty(
-                        "User-Agent",
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
-                    )
-                    connection.connectTimeout = 15000 // 15 seconds
-                    connection.readTimeout = 15000 // 15 seconds
-
-                    val responseCode = connection.responseCode
-                    if (responseCode == HttpURLConnection.HTTP_OK) {
-                        inputStream = connection.inputStream
-                        val bitmap = BitmapFactory.decodeStream(inputStream)
-
-                        withContext(Dispatchers.Main) {
-                            if (bitmap != null) {
-                                binding.cropImageView.setImageBitmap(bitmap)
-                                loadSavedCropRect() // Call loadSavedCropRect() after setting the bitmap
-                            } else {
-                                Log.e("CropActivity", "loadImageToCropView: Decoded Bitmap is null")
-                                Toast.makeText(this@CropActivity, "Error loading image: Could not decode", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    } else {
-                        val errorStream = connection.errorStream?.bufferedReader()?.use { it.readText() }
-                        Log.e("CropActivity", "loadImageToCropView: HTTP error code: $responseCode, error: $errorStream")
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(this@CropActivity, "Error loading image: HTTP $responseCode", Toast.LENGTH_SHORT).show()
-                        }
+        val url = currentWallpaperUrl ?: return
+        lifecycleScope.launch {
+            try {
+                val dm = resources.displayMetrics
+                val request = ImageRequest.Builder(this@CropActivity)
+                    .data(url)
+                    .allowHardware(false)
+                    .size(dm.widthPixels, dm.heightPixels)
+                    .build()
+                val result = imageLoader.execute(request)
+                val bitmap = (result.drawable as? BitmapDrawable)?.bitmap
+                    ?: run {
+                        Toast.makeText(this@CropActivity, "Error loading image", Toast.LENGTH_SHORT).show()
+                        return@launch
                     }
-
-                } catch (e: Exception) {
-                    Log.e("CropActivity", "loadImageToCropView: Error loading image", e)
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@CropActivity, "Error loading image: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                val tempFile = withContext(Dispatchers.IO) {
+                    File(cacheDir, "crop_preview.jpg").apply {
+                        outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) }
                     }
-                } finally {
-                    inputStream?.close()
-                    connection?.disconnect()
                 }
+                cropImageView?.setImageUriAsync(Uri.fromFile(tempFile))
+            } catch (e: Exception) {
+                Log.e("CropActivity", "Error loading image", e)
+                Toast.makeText(this@CropActivity, "Error loading image", Toast.LENGTH_SHORT).show()
             }
         }
-    }
-
-    private fun setupViews() {
-        binding.cropButton.setOnClickListener {
-            binding.cropImageView.croppedImageAsync()
-        }
-    }
-
-    private fun setupFavoriteButton() {
-        currentWallpaperId?.let { id ->
-            isFavorite = viewModel.isFavorite(id)
-            updateFavoriteButtonState()
-
-            binding.favoriteButton.setOnClickListener {
-                viewModel.toggleFavorite(id)
-                isFavorite = !isFavorite
-                favoriteStateChanged = true // Mark that the favorite state has changed
-                updateFavoriteButtonState()
-            }
-        }
-    }
-
-    private fun updateFavoriteButtonState() {
-        binding.favoriteButton.setImageResource(
-            if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_border
-        )
     }
 
     private fun saveCropRect() {
+        val view = cropImageView ?: return
         currentWallpaperId?.let { id ->
-            val cropRect = binding.cropImageView.cropRect
-            val imageWidth = binding.cropImageView.wholeImageRect?.width() ?: 0
-            val imageHeight = binding.cropImageView.wholeImageRect?.height() ?: 0
-            
-            Log.d("CropActivity", "Saving crop rect for ID: $id, Rect = $cropRect")
-            Log.d("CropActivity", "Original image dimensions: ${imageWidth}x${imageHeight}")
-            
+            val cropRect = view.cropRect
+            val imageWidth = view.wholeImageRect?.width() ?: 0
+            val imageHeight = view.wholeImageRect?.height() ?: 0
             if (cropRect != null) {
-                // Save both crop rect and relative percentages
                 getSharedPreferences("WallsPrefs", Context.MODE_PRIVATE).edit().apply {
-                    // Save absolute coordinates
                     putInt("crop_rect_left_$id", cropRect.left)
                     putInt("crop_rect_top_$id", cropRect.top)
                     putInt("crop_rect_right_$id", cropRect.right)
                     putInt("crop_rect_bottom_$id", cropRect.bottom)
-                    
-                    // Save relative percentages
                     putFloat("crop_rect_left_percent_$id", cropRect.left.toFloat() / imageWidth)
                     putFloat("crop_rect_top_percent_$id", cropRect.top.toFloat() / imageHeight)
                     putFloat("crop_rect_right_percent_$id", cropRect.right.toFloat() / imageWidth)
                     putFloat("crop_rect_bottom_percent_$id", cropRect.bottom.toFloat() / imageHeight)
-                    
-                    // Save original dimensions
                     putInt("original_width_$id", imageWidth)
                     putInt("original_height_$id", imageHeight)
-                    
                     apply()
                 }
             }
@@ -198,30 +211,16 @@ class CropActivity : AppCompatActivity() {
     }
 
     private fun loadSavedCropRect() {
+        val view = cropImageView ?: return
         currentWallpaperId?.let { id ->
-            Log.d("CropActivity", "Loading saved crop rect for ID: $id")
             val prefs = getSharedPreferences("WallsPrefs", Context.MODE_PRIVATE)
-            val savedLeft = prefs.getInt("crop_rect_left_$id", 0)
-            val savedTop = prefs.getInt("crop_rect_top_$id", 0)
-            val savedRight = prefs.getInt("crop_rect_right_$id", 0)
-            val savedBottom = prefs.getInt("crop_rect_bottom_$id", 0)
-
-            Log.d("CropActivity", "Loaded crop rect values: left=$savedLeft, top=$savedTop, right=$savedRight, bottom=$savedBottom")
-
-            if (savedLeft != 0 || savedTop != 0 || savedRight != 0 || savedBottom != 0) {
-                val savedRect = Rect(savedLeft, savedTop, savedRight, savedBottom)
-                Log.d("CropActivity", "Setting crop rect from saved values for ID: $id, Rect = $savedRect")
-                binding.cropImageView.cropRect = savedRect
-
-                Log.d("CropActivity", "Crop rect set on ImageView: ${binding.cropImageView.cropRect}")
-            } else {
-                Log.d("CropActivity", "No saved crop rect found or invalid values.")
+            val left = prefs.getInt("crop_rect_left_$id", 0)
+            val top = prefs.getInt("crop_rect_top_$id", 0)
+            val right = prefs.getInt("crop_rect_right_$id", 0)
+            val bottom = prefs.getInt("crop_rect_bottom_$id", 0)
+            if (left != 0 || top != 0 || right != 0 || bottom != 0) {
+                view.cropRect = Rect(left, top, right, bottom)
             }
         }
     }
-
-    override fun onSupportNavigateUp(): Boolean {
-        onBackPressedDispatcher.onBackPressed()
-        return true
-    }
-} 
+}
