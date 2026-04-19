@@ -49,6 +49,8 @@
 
         <activity android:name=".ui.FavoritesActivity" />
 
+        <activity android:name=".ui.SearchActivity" />
+
           <activity
         android:name=".ui.CropActivity"
         android:exported="false" />

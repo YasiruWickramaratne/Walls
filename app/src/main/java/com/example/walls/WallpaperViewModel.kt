@@ -79,6 +79,15 @@ class WallpaperViewModel @Inject constructor(
     private val _searchWallpapers = MutableStateFlow<List<Wallpaper>>(emptyList())
     val searchWallpapers: StateFlow<List<Wallpaper>> = _searchWallpapers
 
+    private val _currentSearchQuery = MutableStateFlow("")
+    val currentSearchQuery: StateFlow<String> = _currentSearchQuery
+
+    private val _searchLoading = MutableStateFlow(false)
+    val searchLoading: StateFlow<Boolean> = _searchLoading
+
+    private val _hasCompletedSearch = MutableStateFlow(false)
+    val hasCompletedSearch: StateFlow<Boolean> = _hasCompletedSearch
+
     private val _filterChanged = MutableStateFlow(false)
     val filterChanged: StateFlow<Boolean> = _filterChanged
 
@@ -125,9 +134,8 @@ class WallpaperViewModel @Inject constructor(
     private var cachedTopWallpapers = mutableListOf<Wallpaper>()
     private var cachedSearchWallpapers = mutableListOf<Wallpaper>()
     private var isSearchLoading = false
-    private var currentSearchQuery: String = ""
-    
     private var isReturningFromFullScreen = false
+    private var lastFetchedSearchQuery = ""
 
     fun fetchWallpapers(sorting: String, isLoadingMore: Boolean = false) {
         val isRecent = sorting == "date_added"
@@ -256,6 +264,9 @@ class WallpaperViewModel @Inject constructor(
         hasRecentMorePages = true
         hasTopMorePages = true
         hasSearchMorePages = true
+        lastFetchedSearchQuery = ""
+        _searchLoading.value = false
+        _hasCompletedSearch.value = false
         cachedRecentWallpapers.clear()
         cachedTopWallpapers.clear()
         cachedSearchWallpapers.clear()
@@ -333,25 +344,28 @@ class WallpaperViewModel @Inject constructor(
     }
 
     fun setCurrentSearchQuery(query: String) {
-        currentSearchQuery = query.trim()
+        _currentSearchQuery.value = query.trim()
     }
 
-    fun getCurrentSearchQuery(): String = currentSearchQuery
+    fun getCurrentSearchQuery(): String = _currentSearchQuery.value
 
     fun fetchSearchWallpapers(query: String, isLoadingMore: Boolean = false) {
         val normalizedQuery = query.trim()
         if (normalizedQuery.isBlank()) {
-            currentSearchQuery = ""
+            _currentSearchQuery.value = ""
             currentSearchPage = 1
             hasSearchMorePages = true
+            lastFetchedSearchQuery = ""
+            _searchLoading.value = false
+            _hasCompletedSearch.value = false
             cachedSearchWallpapers.clear()
             _searchWallpapers.value = emptyList()
             return
         }
 
-        val isNewQuery = normalizedQuery != currentSearchQuery
+        val isNewQuery = normalizedQuery != lastFetchedSearchQuery
         if (isNewQuery) {
-            currentSearchQuery = normalizedQuery
+            _currentSearchQuery.value = normalizedQuery
             currentSearchPage = 1
             hasSearchMorePages = true
             cachedSearchWallpapers.clear()
@@ -362,7 +376,13 @@ class WallpaperViewModel @Inject constructor(
 
         if (!isLoadingMore && !isNewQuery && cachedSearchWallpapers.isNotEmpty()) {
             _searchWallpapers.value = cachedSearchWallpapers.toList()
+            _hasCompletedSearch.value = true
             return
+        }
+
+        if (!isLoadingMore) {
+            _searchLoading.value = true
+            _hasCompletedSearch.value = false
         }
 
         viewModelScope.launch {
@@ -379,6 +399,7 @@ class WallpaperViewModel @Inject constructor(
                 if (!isLoadingMore || isNewQuery) {
                     cachedSearchWallpapers.clear()
                 }
+                lastFetchedSearchQuery = normalizedQuery
                 cachedSearchWallpapers.addAll(response.data)
                 _searchWallpapers.value = cachedSearchWallpapers.toList()
                 currentSearchPage++
@@ -387,6 +408,10 @@ class WallpaperViewModel @Inject constructor(
                 Log.e("WallpaperViewModel", "Error fetching search wallpapers", e)
             } finally {
                 isSearchLoading = false
+                if (!isLoadingMore) {
+                    _searchLoading.value = false
+                    _hasCompletedSearch.value = true
+                }
             }
         }
     }

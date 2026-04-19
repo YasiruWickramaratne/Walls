@@ -1,6 +1,7 @@
 package com.example.walls.ui.screens
 
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -133,9 +134,15 @@ fun SettingsScreen(viewModel: WallpaperViewModel, onBack: () -> Unit) {
             Spacer(modifier = Modifier.height(8.dp))
             Button(
                 onClick = {
-                    prefs.edit().putString("API_KEY", apiKey.trim()).apply()
-                    viewModel.saveApiKey(apiKey.trim())
+                    val trimmedApiKey = apiKey.trim()
+                    prefs.edit().putString("API_KEY", trimmedApiKey).apply()
+                    viewModel.saveApiKey(trimmedApiKey)
                     apiKeyDirty = false
+                    Toast.makeText(
+                        context,
+                        if (trimmedApiKey.isBlank()) "API key cleared" else "API key saved",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 },
                 enabled = apiKeyDirty,
                 modifier = Modifier.fillMaxWidth()
@@ -165,8 +172,16 @@ fun SettingsScreen(viewModel: WallpaperViewModel, onBack: () -> Unit) {
                             .putLong("AUTO_CHANGE_INTERVAL", ms)
                             .putInt("WALLPAPER_SCREEN", selectedScreenIndex)
                             .apply()
-                        if (enabled) scheduleAutoWallpaper(context, ms)
-                        else cancelAutoWallpaper(context)
+                        if (enabled) {
+                            scheduleAutoWallpaper(context, ms)
+                        } else {
+                            cancelAutoWallpaper(context)
+                        }
+                        Toast.makeText(
+                            context,
+                            if (enabled) "Auto wallpaper enabled" else "Auto wallpaper disabled",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 )
             }

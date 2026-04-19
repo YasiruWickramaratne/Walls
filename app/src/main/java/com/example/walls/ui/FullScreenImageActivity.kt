@@ -2,6 +2,7 @@ package com.example.walls.ui
 
 import android.app.WallpaperManager
 import android.graphics.Rect
+import android.content.Intent
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
@@ -485,6 +486,9 @@ private fun FullScreenImageScreen(
                     WallpaperInfoSheet(
                         details = currentDetails,
                         isLoading = isDetailsLoading,
+                        onTagClick = { tagName ->
+                            context.startActivity(SearchActivity.createIntent(context, tagName))
+                        },
                         onDismiss = { isInfoSheetVisible = false },
                         modifier = Modifier
                             .align(androidx.compose.ui.Alignment.BottomCenter)
@@ -587,6 +591,7 @@ private fun WallpaperPageView(
 private fun WallpaperInfoSheet(
     details: WallpaperDetail?,
     isLoading: Boolean,
+    onTagClick: (String) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -681,12 +686,11 @@ private fun WallpaperInfoSheet(
                     ) {
                         details.tags.forEach { tag ->
                             AssistChip(
-                                onClick = {},
-                                enabled = false,
+                                onClick = { onTagClick(tag.name) },
                                 label = { Text(tag.name) },
                                 colors = AssistChipDefaults.assistChipColors(
-                                    disabledContainerColor = colorScheme.secondaryContainer.copy(alpha = 0.7f),
-                                    disabledLabelColor = colorScheme.onSecondaryContainer.copy(alpha = 0.95f)
+                                    containerColor = colorScheme.secondaryContainer.copy(alpha = 0.7f),
+                                    labelColor = colorScheme.onSecondaryContainer.copy(alpha = 0.95f)
                                 )
                             )
                         }

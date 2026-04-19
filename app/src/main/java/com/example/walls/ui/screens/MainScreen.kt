@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -55,6 +56,7 @@ import com.example.walls.Wallpaper
 import com.example.walls.WallpaperViewModel
 import com.example.walls.ui.FavoritesActivity
 import com.example.walls.ui.FullScreenImageActivity
+import com.example.walls.ui.SearchActivity
 import com.example.walls.ui.SettingsActivity
 import com.example.walls.ui.components.WallpaperCard
 import com.google.gson.Gson
@@ -97,6 +99,15 @@ fun MainScreen(viewModel: WallpaperViewModel) {
                         context.startActivity(Intent(context, FavoritesActivity::class.java))
                     }
                 )
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    label = { Text("Search") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        context.startActivity(Intent(context, SearchActivity::class.java))
+                    }
+                )
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Settings, contentDescription = null) },
@@ -113,7 +124,7 @@ fun MainScreen(viewModel: WallpaperViewModel) {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Walls") },
+                    title = { Text("wallP") },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
                             Icon(Icons.Default.Menu, contentDescription = "Open menu")
