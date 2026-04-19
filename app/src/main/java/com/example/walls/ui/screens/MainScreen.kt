@@ -57,6 +57,7 @@ import com.example.walls.ui.FavoritesActivity
 import com.example.walls.ui.FullScreenImageActivity
 import com.example.walls.ui.SettingsActivity
 import com.example.walls.ui.components.WallpaperCard
+import com.google.gson.Gson
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -148,10 +149,16 @@ fun MainScreen(viewModel: WallpaperViewModel) {
                     val sorting = if (page == 0) "date_added" else "toplist"
                     WallpaperGrid(
                         wallpapers = wallpapers,
-                        onWallpaperClick = { wallpaper ->
+                        onWallpaperClick = { wallpaper, index ->
+                            val wallpapersJson = Gson().toJson(wallpapers)
                             Intent(context, FullScreenImageActivity::class.java).apply {
                                 putExtra("WALLPAPER_ID", wallpaper.id)
                                 putExtra("IMAGE_URL", wallpaper.path)
+                                putExtra("WALLPAPER_LIST", wallpapersJson)
+                                putExtra("WALLPAPER_INDEX", index)
+                                putExtra("WALLPAPER_SORTING", sorting)
+                                putExtra("WALLPAPER_NEXT_PAGE", viewModel.getNextPageForSorting(sorting))
+                                putExtra("WALLPAPER_HAS_MORE", viewModel.hasMorePagesForSorting(sorting))
                             }.also { context.startActivity(it) }
                         },
                         onLoadMore = { viewModel.fetchWallpapers(sorting, isLoadingMore = true) }
@@ -172,7 +179,7 @@ fun MainScreen(viewModel: WallpaperViewModel) {
 @Composable
 fun WallpaperGrid(
     wallpapers: List<Wallpaper>,
-    onWallpaperClick: (Wallpaper) -> Unit,
+    onWallpaperClick: (Wallpaper, Int) -> Unit,
     onLoadMore: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -196,7 +203,7 @@ fun WallpaperGrid(
             }
             WallpaperCard(
                 wallpaper = wallpaper,
-                onClick = { onWallpaperClick(wallpaper) }
+                onClick = { onWallpaperClick(wallpaper, index) }
             )
         }
     }

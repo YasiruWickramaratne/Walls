@@ -248,6 +248,35 @@ class WallpaperViewModel @Inject constructor(
     fun setReturningFromFullScreen() {
         isReturningFromFullScreen = true
     }
+
+    fun getNextPageForSorting(sorting: String): Int {
+        return if (sorting == "date_added") currentRecentPage else currentTopPage
+    }
+
+    fun hasMorePagesForSorting(sorting: String): Boolean {
+        return if (sorting == "date_added") hasRecentMorePages else hasTopMorePages
+    }
+
+    fun seedWallpapersForSorting(
+        sorting: String,
+        wallpapers: List<Wallpaper>,
+        nextPage: Int,
+        hasMorePages: Boolean
+    ) {
+        if (sorting == "date_added") {
+            cachedRecentWallpapers.clear()
+            cachedRecentWallpapers.addAll(wallpapers)
+            _recentWallpapers.value = wallpapers
+            currentRecentPage = nextPage
+            hasRecentMorePages = hasMorePages
+        } else {
+            cachedTopWallpapers.clear()
+            cachedTopWallpapers.addAll(wallpapers)
+            _topWallpapers.value = wallpapers
+            currentTopPage = nextPage
+            hasTopMorePages = hasMorePages
+        }
+    }
 }
 
 data class WallpaperResponse(
