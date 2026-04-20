@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import com.example.walls.ThemeMode
 import com.example.walls.WallpaperViewModel
 import com.example.walls.data.manager.AutoWallpaperSettingsManager
+import com.example.walls.data.manager.SmartCropSettingsManager
 import com.example.walls.ui.screens.SettingsScreen
 import com.example.walls.ui.theme.WallsTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -20,6 +21,7 @@ class SettingsActivity : AppCompatActivity() {
 
     private val viewModel: WallpaperViewModel by viewModels()
     @Inject lateinit var autoWallpaperSettingsManager: AutoWallpaperSettingsManager
+    @Inject lateinit var smartCropSettingsManager: SmartCropSettingsManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,6 +36,7 @@ class SettingsActivity : AppCompatActivity() {
                 SettingsScreen(
                     viewModel = viewModel,
                     autoWallpaperSettingsManager = autoWallpaperSettingsManager,
+                    smartCropSettingsManager = smartCropSettingsManager,
                     onBack = { finish() }
                 )
             }

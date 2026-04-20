@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Spacer
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +40,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -120,6 +124,12 @@ fun SearchScreen(
         topBar = {
             TopAppBar(
                 title = { Text(if (isSelectionMode) "${selectedIds.size} selected" else "Search") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.primary,
+                    actionIconContentColor = MaterialTheme.colorScheme.primary
+                ),
                 navigationIcon = {
                     IconButton(onClick = {
                         if (isSelectionMode) {
@@ -242,24 +252,44 @@ fun SearchScreen(
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .imePadding()
                     .padding(16.dp),
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 if (isSelectionMode) {
-                    FloatingActionButton(onClick = { showCollectionDialog = true }) {
+                    FloatingActionButton(
+                        onClick = { showCollectionDialog = true },
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        elevation = FloatingActionButtonDefaults.elevation()
+                    ) {
                         Icon(Icons.Default.Star, contentDescription = "Add to collection")
                     }
-                    FloatingActionButton(onClick = { addSelectedToFavorites() }) {
+                    FloatingActionButton(
+                        onClick = { addSelectedToFavorites() },
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        elevation = FloatingActionButtonDefaults.elevation()
+                    ) {
                         Icon(Icons.Default.Favorite, contentDescription = "Add to favorites")
                     }
                 } else {
-                    FloatingActionButton(onClick = { showFilterDialog = true }) {
+                    FloatingActionButton(
+                        onClick = { showFilterDialog = true },
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        elevation = FloatingActionButtonDefaults.elevation()
+                    ) {
                         Icon(Icons.Default.FilterList, contentDescription = "Filter")
                     }
 
                     FloatingActionButton(
-                        onClick = { submitSearch() }
+                        onClick = { submitSearch() },
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        elevation = FloatingActionButtonDefaults.elevation()
                     ) {
                         Icon(Icons.Default.Search, contentDescription = "Search")
                     }

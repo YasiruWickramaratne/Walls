@@ -1,7 +1,6 @@
 package com.example.walls.ui.fullscreen.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
@@ -23,15 +23,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.example.walls.api.WallpaperDetail
 
@@ -43,54 +36,29 @@ fun WallpaperInfoSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val density = LocalDensity.current
-    val dismissThresholdPx = with(density) { 72.dp.toPx() }
-    var dragOffsetY by remember { mutableFloatStateOf(0f) }
     val colorScheme = MaterialTheme.colorScheme
 
     Surface(
         modifier = modifier,
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-        color = colorScheme.surface.copy(alpha = 0.94f),
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp, bottomStart = 18.dp, bottomEnd = 18.dp),
+        color = colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
         contentColor = colorScheme.onSurface,
-        tonalElevation = 8.dp
+        tonalElevation = 4.dp,
+        shadowElevation = 4.dp
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(horizontal = 8.dp, vertical = 6.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .align(androidx.compose.ui.Alignment.CenterHorizontally)
-                    .width(40.dp)
-                    .height(4.dp)
-                    .background(colorScheme.onSurface.copy(alpha = 0.25f), CircleShape)
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures(
-                            onVerticalDrag = { change, dragAmount ->
-                                if (dragAmount > 0f || dragOffsetY > 0f) {
-                                    dragOffsetY = (dragOffsetY + dragAmount).coerceAtLeast(0f)
-                                }
-                                change.consume()
-                            },
-                            onDragEnd = {
-                                if (dragOffsetY >= dismissThresholdPx) {
-                                    onDismiss()
-                                }
-                                dragOffsetY = 0f
-                            },
-                            onDragCancel = {
-                                dragOffsetY = 0f
-                            }
-                        )
-                    }
-            )
-            Spacer(modifier = Modifier.height(14.dp))
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .graphicsLayer { translationY = dragOffsetY }
+                    .background(
+                        color = colorScheme.surface.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(22.dp)
+                    )
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(
@@ -137,7 +105,7 @@ fun WallpaperInfoSheet(
                                 onClick = { onTagClick(tag.name) },
                                 label = { Text(tag.name) },
                                 colors = AssistChipDefaults.assistChipColors(
-                                    containerColor = colorScheme.secondaryContainer.copy(alpha = 0.7f),
+                                    containerColor = colorScheme.secondaryContainer.copy(alpha = 0.82f),
                                     labelColor = colorScheme.onSecondaryContainer.copy(alpha = 0.95f)
                                 )
                             )

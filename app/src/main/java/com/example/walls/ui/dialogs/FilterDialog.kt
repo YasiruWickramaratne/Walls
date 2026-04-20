@@ -79,6 +79,8 @@ fun FilterDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Filter Wallpapers") },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 6.dp,
         text = {
             Column(
                 modifier = Modifier

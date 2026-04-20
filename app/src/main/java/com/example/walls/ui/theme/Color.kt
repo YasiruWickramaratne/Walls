@@ -4,20 +4,20 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+val Amber80 = Color(0xFFF5DFA1)
+val AmberGrey80 = Color(0xFFD4C3A5)
+val Coral80 = Color(0xFFF3C5A8)
 
-val Purple40 = Color(0xFF6650A4)
-val PurpleGrey40 = Color(0xFF625B71)
-val Pink40 = Color(0xFF7D5260)
+val Amber40 = Color(0xFF8B5E18)
+val AmberGrey40 = Color(0xFF75624A)
+val Coral40 = Color(0xFF8C5A3C)
 
 val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+    primary = Amber40,
+    secondary = AmberGrey40,
+    tertiary = Coral40,
+    background = Color(0xFFFFF8F1),
+    surface = Color(0xFFFFF8F1),
     onPrimary = Color.White,
     onSecondary = Color.White,
     onTertiary = Color.White,
@@ -26,14 +26,14 @@ val LightColorScheme = lightColorScheme(
 )
 
 val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80,
-    background = Color(0xFF1C1B1F),
-    surface = Color(0xFF1C1B1F),
-    onPrimary = Color(0xFF381E72),
-    onSecondary = Color(0xFF332D41),
-    onTertiary = Color(0xFF492532),
-    onBackground = Color(0xFFE6E1E5),
-    onSurface = Color(0xFFE6E1E5),
+    primary = Amber80,
+    secondary = AmberGrey80,
+    tertiary = Coral80,
+    background = Color(0xFF17120D),
+    surface = Color(0xFF17120D),
+    onPrimary = Color(0xFF4D2F00),
+    onSecondary = Color(0xFF433424),
+    onTertiary = Color(0xFF4A2E1B),
+    onBackground = Color(0xFFF0E1D2),
+    onSurface = Color(0xFFF0E1D2),
 )

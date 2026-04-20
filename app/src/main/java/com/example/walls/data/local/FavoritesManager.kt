@@ -3,8 +3,9 @@ package com.example.walls.data.local
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.lifecycle.MutableLiveData
+import com.example.walls.data.model.CollectionStylePreset
+import com.example.walls.data.repository.FavoriteCollection
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import javax.inject.Inject
 
 class FavoritesManager @Inject constructor(
@@ -18,6 +19,12 @@ class FavoritesManager @Inject constructor(
         context.getSharedPreferences("Favorites", Context.MODE_PRIVATE)
     private val _favorites = MutableLiveData<Set<String>>()
     private val gson = Gson()
+
+    private data class StoredFavoriteCollection(
+        val name: String? = null,
+        val wallpaperIds: Set<String>? = null,
+        val stylePreset: String? = null
+    )
 
     fun loadFavorites() {
         _favorites.postValue(getFavorites())
@@ -67,11 +74,27 @@ class FavoritesManager @Inject constructor(
         return getFavorites().contains(id)
     }
 
-    fun getCollections(): List<com.example.walls.data.repository.FavoriteCollection> {
+    fun getCollections(): List<FavoriteCollection> {
         val json = favoritesPreferences.getString("favorite_collections", null) ?: return emptyList()
-        val type = object : TypeToken<List<com.example.walls.data.repository.FavoriteCollection>>() {}.type
         return runCatching {
-            gson.fromJson<List<com.example.walls.data.repository.FavoriteCollection>>(json, type)
+            gson.fromJson(json, Array<StoredFavoriteCollection>::class.java)
+                ?.mapNotNull { stored ->
+                    val name = stored.name?.trim().orEmpty()
+                    if (name.isBlank()) {
+                        null
+                    } else {
+                        FavoriteCollection(
+                            name = name,
+                            wallpaperIds = stored.wallpaperIds.orEmpty(),
+                            stylePreset = stored.stylePreset
+                                ?.let { presetName ->
+                                    CollectionStylePreset.entries.firstOrNull { it.name == presetName }
+                                }
+                                ?: CollectionStylePreset.DEFAULT
+                        )
+                    }
+                }
+                .orEmpty()
         }.getOrDefault(emptyList())
     }
 
@@ -81,7 +104,7 @@ class FavoritesManager @Inject constructor(
         val collections = getCollections().toMutableList()
         if (collections.any { it.name.equals(normalized, ignoreCase = true) }) return false
         if (collections.size >= MAX_COLLECTIONS) return false
-        collections.add(com.example.walls.data.repository.FavoriteCollection(normalized, emptySet()))
+        collections.add(FavoriteCollection(normalized, emptySet()))
         saveCollections(collections)
         return true
     }
@@ -107,7 +130,7 @@ class FavoritesManager @Inject constructor(
             val collection = collections[index]
             collections[index] = collection.copy(wallpaperIds = collection.wallpaperIds + wallpaperId)
         } else {
-            collections.add(com.example.walls.data.repository.FavoriteCollection(normalized, setOf(wallpaperId)))
+            collections.add(FavoriteCollection(normalized, setOf(wallpaperId)))
         }
         saveCollections(collections)
     }
@@ -133,7 +156,20 @@ class FavoritesManager @Inject constructor(
         return !isCurrentlyIncluded
     }
 
-    private fun saveCollections(collections: List<com.example.walls.data.repository.FavoriteCollection>) {
+    fun updateCollectionStyle(collectionName: String, stylePreset: CollectionStylePreset): Boolean {
+        val normalized = collectionName.trim()
+        if (normalized.isBlank()) return false
+
+        val collections = getCollections().toMutableList()
+        val index = collections.indexOfFirst { it.name.equals(normalized, ignoreCase = true) }
+        if (index == -1) return false
+
+        collections[index] = collections[index].copy(stylePreset = stylePreset)
+        saveCollections(collections)
+        return true
+    }
+
+    private fun saveCollections(collections: List<FavoriteCollection>) {
         favoritesPreferences.edit()
             .putString("favorite_collections", gson.toJson(collections))
             .apply()

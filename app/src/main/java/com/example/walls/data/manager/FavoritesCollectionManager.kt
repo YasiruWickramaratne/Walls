@@ -1,6 +1,7 @@
 package com.example.walls.data.manager
 
 import com.example.walls.api.WallpaperDetail
+import com.example.walls.data.model.CollectionStylePreset
 import com.example.walls.data.repository.FavoriteCollection
 import com.example.walls.data.repository.FavoritesRepository
 import javax.inject.Inject
@@ -48,5 +49,9 @@ class FavoritesCollectionManager @Inject constructor(
 
     fun getCollectionWallpaperIds(collectionNames: Set<String>): Set<String> {
         return favoritesRepository.getCollectionWallpaperIds(collectionNames)
+    }
+
+    fun updateCollectionStyle(collectionName: String, stylePreset: CollectionStylePreset): Boolean {
+        return favoritesRepository.updateCollectionStyle(collectionName, stylePreset)
     }
 }

@@ -3,7 +3,11 @@ package com.example.walls.data.repository
 import com.example.walls.data.local.FavoritesManager
 import com.example.walls.api.WallhavenApiService
 import com.example.walls.api.WallpaperDetail
+import com.example.walls.data.model.CollectionStylePreset
 import javax.inject.Inject
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 class FavoritesRepositoryImpl @Inject constructor(
     private val favoritesManager: FavoritesManager,
@@ -54,6 +58,10 @@ class FavoritesRepositoryImpl @Inject constructor(
         return favoritesManager.toggleCollectionMembership(collectionName, wallpaperId)
     }
 
+    override fun updateCollectionStyle(collectionName: String, stylePreset: CollectionStylePreset): Boolean {
+        return favoritesManager.updateCollectionStyle(collectionName, stylePreset)
+    }
+
     override suspend fun fetchFavoriteWallpapers(apiKey: String, collectionName: String?): List<WallpaperDetail> {
         val favoriteIds = if (collectionName.isNullOrBlank()) {
             favoritesManager.getFavorites()
@@ -63,22 +71,25 @@ class FavoritesRepositoryImpl @Inject constructor(
                 ?.wallpaperIds
                 .orEmpty()
         }
-        return favoriteIds.mapNotNull { id ->
-            try {
-                apiService.getWallpaperDetails(id, apiKey).data
-            } catch (e: Exception) {
-                null
-            }
-        }
+        return fetchDetailsInParallel(apiKey, favoriteIds)
     }
 
     override suspend fun fetchWallpapersByIds(apiKey: String, wallpaperIds: Set<String>): List<WallpaperDetail> {
-        return wallpaperIds.mapNotNull { id ->
-            try {
-                apiService.getWallpaperDetails(id, apiKey).data
-            } catch (e: Exception) {
-                null
+        return fetchDetailsInParallel(apiKey, wallpaperIds)
+    }
+
+    private suspend fun fetchDetailsInParallel(
+        apiKey: String,
+        wallpaperIds: Set<String>
+    ): List<WallpaperDetail> = coroutineScope {
+        wallpaperIds.map { id ->
+            async {
+                try {
+                    apiService.getWallpaperDetails(id, apiKey).data
+                } catch (_: Exception) {
+                    null
+                }
             }
-        }
+        }.awaitAll().filterNotNull()
     }
 }

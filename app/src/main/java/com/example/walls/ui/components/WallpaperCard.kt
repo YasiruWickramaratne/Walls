@@ -48,7 +48,7 @@ fun WallpaperCard(
     ) {
         androidx.compose.foundation.layout.Box {
             AsyncImage(
-                model = wallpaper.thumbs.large,
+                model = wallpaper.thumbs.small,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier

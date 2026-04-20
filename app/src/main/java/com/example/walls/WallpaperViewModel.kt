@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.walls.api.WallpaperDetail
 import com.example.walls.data.manager.FavoritesCollectionManager
+import com.example.walls.data.model.CollectionStylePreset
 import com.example.walls.data.repository.FavoriteCollection
 import com.example.walls.data.repository.WallpaperRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -46,6 +48,8 @@ class WallpaperViewModel @Inject constructor(
 
     private val _wallpaperDetailsLoading = MutableStateFlow<Set<String>>(emptySet())
     val wallpaperDetailsLoading: StateFlow<Set<String>> = _wallpaperDetailsLoading
+    private var favoritesFetchJob: Job? = null
+    private var favoritesFetchVersion: Long = 0L
 
     fun setThemeMode(mode: ThemeMode) {
         _themeMode.value = mode
@@ -68,14 +72,45 @@ class WallpaperViewModel @Inject constructor(
     }
 
     fun fetchFavoriteWallpapers() {
-        viewModelScope.launch {
+        val requestVersion = ++favoritesFetchVersion
+        favoritesFetchJob?.cancel()
+        favoritesFetchJob = viewModelScope.launch {
             val apiKey = wallpaperRepository.getApiKey()
             try {
-                val favorites = favoritesCollectionManager.fetchFavoriteWallpapers(
-                    apiKey = apiKey,
-                    collectionName = _selectedFavoritesCollection.value
-                )
-                _favoriteWallpapers.value = favorites
+                val selectedCollection = _selectedFavoritesCollection.value
+                val targetIds = if (selectedCollection.isNullOrBlank()) {
+                    favoritesCollectionManager.getFavoriteIds()
+                } else {
+                    favoritesCollectionManager.getCollections()
+                        .firstOrNull { it.name.equals(selectedCollection, ignoreCase = true) }
+                        ?.wallpaperIds
+                        .orEmpty()
+                }
+
+                if (targetIds.isEmpty()) {
+                    if (requestVersion == favoritesFetchVersion) {
+                        _favoriteWallpapers.value = emptyList()
+                    }
+                    return@launch
+                }
+
+                val cachedDetails = _wallpaperDetails.value
+                val cachedForTarget = targetIds.mapNotNull(cachedDetails::get)
+                val missingIds = targetIds - cachedForTarget.map { it.id }.toSet()
+                val fetchedMissing = if (missingIds.isNotEmpty()) {
+                    favoritesCollectionManager.fetchWallpapersByIds(apiKey, missingIds)
+                } else {
+                    emptyList()
+                }
+
+                if (fetchedMissing.isNotEmpty()) {
+                    _wallpaperDetails.value = _wallpaperDetails.value + fetchedMissing.associateBy { it.id }
+                }
+
+                val mergedDetails = (cachedForTarget + fetchedMissing).associateBy { it.id }
+                if (requestVersion == favoritesFetchVersion) {
+                    _favoriteWallpapers.value = targetIds.mapNotNull(mergedDetails::get)
+                }
             } catch (e: Exception) {
                 Log.e("WallpaperViewModel", "Error fetching favorite wallpapers", e)
             }
@@ -159,6 +194,14 @@ class WallpaperViewModel @Inject constructor(
         val isNowIncluded = favoritesCollectionManager.toggleCollectionMembership(collectionName, wallpaperId)
         _favoriteCollections.value = favoritesCollectionManager.getCollections()
         return isNowIncluded
+    }
+
+    fun updateCollectionStyle(collectionName: String, stylePreset: CollectionStylePreset): Boolean {
+        val updated = favoritesCollectionManager.updateCollectionStyle(collectionName, stylePreset)
+        if (updated) {
+            _favoriteCollections.value = favoritesCollectionManager.getCollections()
+        }
+        return updated
     }
 
     private fun refreshFavoritesState() {

@@ -1,7 +1,6 @@
 package com.example.walls.ui.screens
 
 import android.widget.Toast
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -14,9 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
@@ -37,8 +35,10 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +46,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -53,9 +55,12 @@ import coil.compose.AsyncImage
 import com.example.walls.ThemeMode
 import com.example.walls.WallpaperViewModel
 import com.example.walls.data.manager.AutoWallpaperSettingsManager
+import com.example.walls.data.manager.SmartCropSettingsManager
 import com.example.walls.data.model.AutoWallpaperConfig
 import com.example.walls.data.model.AutoWallpaperHistoryEntry
+import com.example.walls.data.model.CollectionStylePreset
 import com.example.walls.data.model.RotationSource
+import com.example.walls.data.model.SmartCropMode
 import com.example.walls.data.model.WallpaperScreenTarget
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -74,29 +79,25 @@ private val rotationSourceLabels = listOf("Favorites only", "Selected collection
 fun SettingsScreen(
     viewModel: WallpaperViewModel,
     autoWallpaperSettingsManager: AutoWallpaperSettingsManager,
+    smartCropSettingsManager: SmartCropSettingsManager,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
 
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val favoriteCollections by viewModel.favoriteCollections.collectAsStateWithLifecycle()
-    val initialConfig = remember(autoWallpaperSettingsManager) {
-        autoWallpaperSettingsManager.loadConfig()
-    }
-    val latestHistoryEntry = remember(autoWallpaperSettingsManager) {
-        autoWallpaperSettingsManager.loadLatestHistory()
-    }
+    val initialConfig = remember(autoWallpaperSettingsManager) { autoWallpaperSettingsManager.loadConfig() }
+    val latestHistoryEntry = remember(autoWallpaperSettingsManager) { autoWallpaperSettingsManager.loadLatestHistory() }
+    val initialSmartSettings = remember(smartCropSettingsManager) { smartCropSettingsManager.loadSettings() }
 
     var apiKey by remember { mutableStateOf(viewModel.getApiKey()) }
     var apiKeyDirty by remember { mutableStateOf(false) }
 
     var autoChangeEnabled by remember(initialConfig) { mutableStateOf(initialConfig.enabled) }
-
     var selectedIntervalIndex by remember {
         mutableStateOf(intervalMillis.indexOfFirst { it == initialConfig.intervalMs }.coerceAtLeast(0))
     }
     var intervalDropdownExpanded by remember { mutableStateOf(false) }
-
     var selectedScreenIndex by remember(initialConfig) {
         mutableStateOf(
             when (initialConfig.screenTarget) {
@@ -107,20 +108,23 @@ fun SettingsScreen(
         )
     }
     var screenDropdownExpanded by remember { mutableStateOf(false) }
-
-    var selectedRotationSource by remember(initialConfig) {
-        mutableStateOf(initialConfig.rotationSource)
-    }
+    var selectedRotationSource by remember(initialConfig) { mutableStateOf(initialConfig.rotationSource) }
     var rotationSourceDropdownExpanded by remember { mutableStateOf(false) }
-
     var selectedRotationCollections by remember(initialConfig) {
         mutableStateOf(
-            initialConfig.selectedSources
-                .toMutableSet()
-                .takeIf { it.isNotEmpty() }
+            initialConfig.selectedSources.toMutableSet().takeIf { it.isNotEmpty() }
                 ?: mutableSetOf(AutoWallpaperConfig.DEFAULT_ROTATION_COLLECTION)
         )
     }
+
+    var smartFitEnabled by remember(initialSmartSettings) { mutableStateOf(initialSmartSettings.enabled) }
+    var smartFitMode by remember(initialSmartSettings) {
+        mutableStateOf(
+            initialSmartSettings.mode.takeUnless { it == SmartCropMode.MANUAL || it == SmartCropMode.SMART_FIT }
+                ?: SmartCropMode.AUTO
+        )
+    }
+    var smartFitSeparate by remember(initialSmartSettings) { mutableStateOf(initialSmartSettings.separateLockHomeFraming) }
 
     fun currentConfig(): AutoWallpaperConfig {
         val screenTarget = when (selectedScreenIndex) {
@@ -146,9 +150,15 @@ fun SettingsScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -176,6 +186,12 @@ fun SettingsScreen(
                         selected = themeMode == mode,
                         onClick = { viewModel.setThemeMode(mode) },
                         shape = SegmentedButtonDefaults.itemShape(index, themeModes.size),
+                        colors = SegmentedButtonDefaults.colors(
+                            activeContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            activeContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            inactiveContainerColor = MaterialTheme.colorScheme.surface,
+                            inactiveContentColor = MaterialTheme.colorScheme.onSurface
+                        ),
                         label = { Text(themeLabels[index]) }
                     )
                 }
@@ -211,9 +227,7 @@ fun SettingsScreen(
                 },
                 enabled = apiKeyDirty,
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Save API Key")
-            }
+            ) { Text("Save API Key") }
 
             Spacer(modifier = Modifier.height(24.dp))
             HorizontalDivider()
@@ -221,32 +235,32 @@ fun SettingsScreen(
 
             Text("Auto Wallpaper", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("Auto change wallpaper", modifier = Modifier.weight(1f))
                 Switch(
                     checked = autoChangeEnabled,
                     onCheckedChange = { enabled ->
                         autoChangeEnabled = enabled
                         persistAutoWallpaperSettings()
-                        if (enabled) {
-                            autoWallpaperSettingsManager.scheduleIfEnabled(currentConfig())
-                        } else {
-                            autoWallpaperSettingsManager.cancel()
-                        }
+                        if (enabled) autoWallpaperSettingsManager.scheduleIfEnabled(currentConfig())
+                        else autoWallpaperSettingsManager.cancel()
                         Toast.makeText(
                             context,
                             if (enabled) "Auto wallpaper enabled" else "Auto wallpaper disabled",
                             Toast.LENGTH_SHORT
                         ).show()
-                    }
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                        checkedBorderColor = MaterialTheme.colorScheme.primary,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
                 )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-
             ExposedDropdownMenuBox(
                 expanded = intervalDropdownExpanded,
                 onExpandedChange = { intervalDropdownExpanded = it }
@@ -256,12 +270,8 @@ fun SettingsScreen(
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Change Interval") },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = intervalDropdownExpanded)
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = intervalDropdownExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
                 )
                 ExposedDropdownMenu(
                     expanded = intervalDropdownExpanded,
@@ -282,26 +292,17 @@ fun SettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-
             ExposedDropdownMenuBox(
                 expanded = rotationSourceDropdownExpanded,
                 onExpandedChange = { rotationSourceDropdownExpanded = it }
             ) {
                 OutlinedTextField(
-                    value = if (selectedRotationSource == RotationSource.COLLECTIONS) {
-                        rotationSourceLabels[1]
-                    } else {
-                        rotationSourceLabels[0]
-                    },
+                    value = if (selectedRotationSource == RotationSource.COLLECTIONS) rotationSourceLabels[1] else rotationSourceLabels[0],
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Smart auto-rotation") },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = rotationSourceDropdownExpanded)
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rotationSourceDropdownExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
                 )
                 ExposedDropdownMenu(
                     expanded = rotationSourceDropdownExpanded,
@@ -348,11 +349,7 @@ fun SettingsScreen(
                             selected = selectedRotationCollections.contains(sourceName),
                             onClick = {
                                 val updated = selectedRotationCollections.toMutableSet()
-                                if (updated.contains(sourceName)) {
-                                    updated.remove(sourceName)
-                                } else {
-                                    updated.add(sourceName)
-                                }
+                                if (updated.contains(sourceName)) updated.remove(sourceName) else updated.add(sourceName)
                                 selectedRotationCollections = if (updated.isEmpty()) {
                                     mutableSetOf(AutoWallpaperConfig.DEFAULT_ROTATION_COLLECTION)
                                 } else {
@@ -361,6 +358,10 @@ fun SettingsScreen(
                                 persistAutoWallpaperSettings()
                                 rescheduleIfNeeded()
                             },
+                            colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            ),
                             label = { Text(sourceName) }
                         )
                     }
@@ -368,7 +369,6 @@ fun SettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-
             ExposedDropdownMenuBox(
                 expanded = screenDropdownExpanded,
                 onExpandedChange = { screenDropdownExpanded = it }
@@ -378,12 +378,8 @@ fun SettingsScreen(
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Wallpaper Screen") },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = screenDropdownExpanded)
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = screenDropdownExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
                 )
                 ExposedDropdownMenu(
                     expanded = screenDropdownExpanded,
@@ -401,6 +397,133 @@ fun SettingsScreen(
                         )
                     }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text("Smart Fit", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Enable Smart Fit", modifier = Modifier.weight(1f))
+                Switch(
+                    checked = smartFitEnabled,
+                    onCheckedChange = {
+                        smartFitEnabled = it
+                        smartCropSettingsManager.saveSettings(
+                            initialSmartSettings.copy(
+                                enabled = smartFitEnabled,
+                                mode = smartFitMode,
+                                separateLockHomeFraming = smartFitSeparate
+                            )
+                        )
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                        checkedBorderColor = MaterialTheme.colorScheme.primary,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Crop mode", style = MaterialTheme.typography.bodyMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(
+                    SmartCropMode.AUTO,
+                    SmartCropMode.SUBJECT_FOCUS,
+                    SmartCropMode.SCENERY,
+                    SmartCropMode.ICON_SAFE,
+                    SmartCropMode.CLOCK_SAFE,
+                    SmartCropMode.DARK_FIT
+                ).forEach { mode ->
+                    FilterChip(
+                        selected = smartFitMode == mode,
+                        onClick = {
+                            smartFitMode = mode
+                            smartCropSettingsManager.saveSettings(
+                                initialSmartSettings.copy(
+                                    enabled = smartFitEnabled,
+                                    mode = smartFitMode,
+                                    separateLockHomeFraming = smartFitSeparate
+                                )
+                            )
+                        },
+                        colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ),
+                        label = { Text(mode.name.lowercase().replace('_', ' ').replaceFirstChar { it.titlecase() }) }
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Separate lock/home framing", modifier = Modifier.weight(1f))
+                Switch(
+                    checked = smartFitSeparate,
+                    onCheckedChange = {
+                        smartFitSeparate = it
+                        smartCropSettingsManager.saveSettings(
+                            initialSmartSettings.copy(
+                                enabled = smartFitEnabled,
+                                mode = smartFitMode,
+                                separateLockHomeFraming = smartFitSeparate
+                            )
+                        )
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                        checkedBorderColor = MaterialTheme.colorScheme.primary,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text("Collection crop styles", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            favoriteCollections.forEach { collection ->
+                var expanded by remember(collection.name, collection.stylePreset) { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = collection.stylePreset.label,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(collection.name) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        CollectionStylePreset.entries.forEach { preset ->
+                            DropdownMenuItem(
+                                text = { Text(preset.label) },
+                                onClick = {
+                                    viewModel.updateCollectionStyle(collection.name, preset)
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -423,19 +546,17 @@ fun SettingsScreen(
 private fun AutoWallpaperHistoryRow(entry: AutoWallpaperHistoryEntry) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp)
+        shape = RoundedCornerShape(18.dp),
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = entry.wallpaperName,
-                    style = MaterialTheme.typography.bodyLarge
-                )
+                Text(text = entry.wallpaperName, style = MaterialTheme.typography.bodyLarge)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = formatHistoryTimestamp(entry.changedAtMillis),
@@ -447,9 +568,7 @@ private fun AutoWallpaperHistoryRow(entry: AutoWallpaperHistoryEntry) {
                 model = entry.thumbnailUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(width = 38.dp, height = 56.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                modifier = Modifier.size(width = 38.dp, height = 56.dp).clip(RoundedCornerShape(10.dp))
             )
         }
     }

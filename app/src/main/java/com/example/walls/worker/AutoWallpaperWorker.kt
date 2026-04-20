@@ -136,7 +136,11 @@ class AutoWallpaperWorker @AssistedInject constructor(
 
     private fun cropBitmap(context: Context, fullBitmap: Bitmap, wallpaperId: String): Bitmap {
         val sharedPref = context.getSharedPreferences("WallsPrefs", Context.MODE_PRIVATE)
-        
+
+        // Sprint 6: SmartFitCropResolver will check CropMetadataManager here and override
+        // percentages when background analysis has produced a SMART_FIT entry. Until then,
+        // manual crop percentages from CropActivity are used as-is.
+
         // Get the relative percentages
         val leftPercent = sharedPref.getFloat("crop_rect_left_percent_$wallpaperId", 0f)
         val topPercent = sharedPref.getFloat("crop_rect_top_percent_$wallpaperId", 0f)

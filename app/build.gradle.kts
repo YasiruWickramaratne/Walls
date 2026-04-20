@@ -78,6 +78,8 @@ dependencies {
     ksp("androidx.room:room-compiler:2.6.0")
 
 
+    implementation("com.google.mlkit:face-detection:16.1.7")
+
     implementation("com.google.android.material:material:1.11.0")
     implementation(platform("androidx.compose:compose-bom:2024.09.00"))
     implementation("androidx.compose.material:material-icons-extended")

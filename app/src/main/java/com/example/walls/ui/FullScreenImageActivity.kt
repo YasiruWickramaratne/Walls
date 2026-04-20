@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.os.Bundle
+import android.util.LruCache
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -23,7 +24,6 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -44,12 +44,15 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -59,7 +62,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.doOnLayout
@@ -84,6 +89,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 import androidx.compose.material3.Text
+import androidx.compose.runtime.rememberCoroutineScope
 
 @AndroidEntryPoint
 class FullScreenImageActivity : AppCompatActivity() {
@@ -169,7 +175,7 @@ class FullScreenImageActivity : AppCompatActivity() {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun FullScreenImageScreen(
     sorting: String,
@@ -179,6 +185,10 @@ private fun FullScreenImageScreen(
     onSetWallpaper: (String, Int) -> Unit
 ) {
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+    val targetWidthPx = with(density) { configuration.screenWidthDp.dp.roundToPx() }
+    val targetHeightPx = with(density) { configuration.screenHeightDp.dp.roundToPx() }
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
     val favoriteCollections by viewModel.favoriteCollections.collectAsStateWithLifecycle()
     val detailsById by viewModel.wallpaperDetails.collectAsStateWithLifecycle()
@@ -190,6 +200,8 @@ private fun FullScreenImageScreen(
         else -> viewModel.recentWallpapers.collectAsStateWithLifecycle()
     }
     val navigationState = rememberFullscreenNavigationState(startIndex)
+    val bitmapWindowCache = remember { FullscreenBitmapWindowCache(maxEntries = 7) }
+    val preloadScope = rememberCoroutineScope()
     var isInfoSheetVisible by remember { mutableStateOf(false) }
     var isImageZoomed by remember { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
@@ -214,6 +226,23 @@ private fun FullScreenImageScreen(
         viewModel.fetchWallpaperDetails(currentWallpaper.id)
         wallpaperList.getOrNull(navigationState.currentIndex + 1)?.id?.let(viewModel::fetchWallpaperDetails)
         wallpaperList.getOrNull(navigationState.currentIndex - 1)?.id?.let(viewModel::fetchWallpaperDetails)
+
+        val keepWallpapers = ((navigationState.currentIndex - 3)..(navigationState.currentIndex + 3))
+            .mapNotNull { index -> wallpaperList.getOrNull(index) }
+        val keepPaths = keepWallpapers.map { it.path }.toSet()
+        bitmapWindowCache.retainOnly(keepPaths)
+
+        keepWallpapers.forEach { wallpaper ->
+            preloadScope.launch {
+                preloadFullscreenBitmap(
+                    context = context,
+                    imageUrl = wallpaper.path,
+                    cache = bitmapWindowCache,
+                    targetWidth = targetWidthPx,
+                    targetHeight = targetHeightPx
+                )
+            }
+        }
     }
 
     LaunchedEffect(isImageZoomed) {
@@ -307,33 +336,30 @@ private fun FullScreenImageScreen(
             ) { index ->
                 WallpaperPageView(
                     wallpaper = wallpaperList[index],
+                    bitmapCache = bitmapWindowCache,
                     onSwipeLeft = { showNextWallpaper() },
                     onSwipeRight = { navigationState.showPrevious() },
                     onSwipeUp = { if (!isImageZoomed) isInfoSheetVisible = true },
                     onSwipeDown = { isInfoSheetVisible = false },
-                    onZoomStateChanged = { zoomed -> isImageZoomed = zoomed }
+                    onZoomStateChanged = { zoomed -> isImageZoomed = zoomed },
+                    targetWidth = targetWidthPx,
+                    targetHeight = targetHeightPx
                 )
             }
 
             AnimatedVisibility(
                 visible = isInfoSheetVisible && !isImageZoomed,
-                enter = slideInVertically(
-                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
-                    initialOffsetY = { it / 2 }
-                ) + fadeIn(animationSpec = tween(180)),
-                exit = slideOutVertically(
-                    animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
-                    targetOffsetY = { it / 2 }
-                ) + fadeOut(animationSpec = tween(120)),
                 modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter)
             ) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Transparent)
-                            .clickable { isInfoSheetVisible = false }
-                    )
+                val infoSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                ModalBottomSheet(
+                    onDismissRequest = { isInfoSheetVisible = false },
+                    sheetState = infoSheetState,
+                    containerColor = Color.Transparent,
+                    scrimColor = Color.Black.copy(alpha = 0.18f),
+                    tonalElevation = 0.dp,
+                    dragHandle = null
+                ) {
                     WallpaperInfoSheet(
                         details = currentDetails,
                         isLoading = isDetailsLoading,
@@ -342,7 +368,6 @@ private fun FullScreenImageScreen(
                         },
                         onDismiss = { isInfoSheetVisible = false },
                         modifier = Modifier
-                            .align(androidx.compose.ui.Alignment.BottomCenter)
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 12.dp)
                     )
@@ -439,21 +464,31 @@ private fun FullScreenImageScreen(
 @Composable
 private fun WallpaperPageView(
     wallpaper: Wallpaper,
+    bitmapCache: FullscreenBitmapWindowCache,
     onSwipeLeft: () -> Unit,
     onSwipeRight: () -> Unit,
     onSwipeUp: () -> Unit,
     onSwipeDown: () -> Unit,
-    onZoomStateChanged: (Boolean) -> Unit
+    onZoomStateChanged: (Boolean) -> Unit,
+    targetWidth: Int,
+    targetHeight: Int
 ) {
     val context = LocalContext.current
     val imageViewRef = remember { mutableStateOf<SwipeableScaleImageView?>(null) }
 
     DisposableEffect(wallpaper.path) {
+        bitmapCache.get(wallpaper.path)?.let { cachedBitmap ->
+            imageViewRef.value?.setImage(ImageSource.bitmap(cachedBitmap))
+            return@DisposableEffect onDispose { }
+        }
+
         val request = ImageRequest.Builder(context)
             .data(wallpaper.path)
             .allowHardware(false)
+            .size(targetWidth, targetHeight)
             .target { drawable ->
                 val bitmap = (drawable as? BitmapDrawable)?.bitmap ?: return@target
+                bitmapCache.put(wallpaper.path, bitmap)
                 imageViewRef.value?.setImage(ImageSource.bitmap(bitmap))
             }
             .build()
@@ -483,4 +518,33 @@ private fun WallpaperPageView(
         },
         modifier = Modifier.fillMaxSize()
     )
+}
+
+private class FullscreenBitmapWindowCache(maxEntries: Int) : LruCache<String, Bitmap>(maxEntries) {
+    fun retainOnly(keysToKeep: Set<String>) {
+        snapshot().keys
+            .filterNot { it in keysToKeep }
+            .forEach { remove(it) }
+    }
+}
+
+private suspend fun preloadFullscreenBitmap(
+    context: android.content.Context,
+    imageUrl: String,
+    cache: FullscreenBitmapWindowCache,
+    targetWidth: Int,
+    targetHeight: Int
+) {
+    if (cache.get(imageUrl) != null) return
+
+    withContext(Dispatchers.IO) {
+        val request = ImageRequest.Builder(context)
+            .data(imageUrl)
+            .allowHardware(false)
+            .size(targetWidth, targetHeight)
+            .build()
+        val result = context.imageLoader.execute(request)
+        val bitmap = (result.drawable as? BitmapDrawable)?.bitmap ?: return@withContext
+        cache.put(imageUrl, bitmap)
+    }
 }
