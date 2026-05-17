@@ -11,7 +11,7 @@ class CropCandidateGenerator @Inject constructor() {
         imageWidth: Int,
         imageHeight: Int,
         targetAspect: Float,
-        steps: Int = 7
+        steps: Int = 15
     ): List<RectF> {
         if (imageWidth <= 0 || imageHeight <= 0 || targetAspect <= 0f) return emptyList()
 

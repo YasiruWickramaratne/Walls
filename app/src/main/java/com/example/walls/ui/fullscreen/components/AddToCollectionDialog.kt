@@ -23,8 +23,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.walls.data.repository.FavoriteCollection
+import com.example.walls.ui.preview.previewCollections
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -124,4 +126,32 @@ fun AddToCollectionDialog(
             }
         }
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AddToCollectionDialogPreview() {
+    MaterialTheme {
+        AddToCollectionDialog(
+            collections = previewCollections(),
+            wallpaperIds = setOf("preview-1", "preview-2"),
+            onDismiss = {},
+            onCreateCollection = {},
+            onToggleCollection = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AddToCollectionDialogEmptyPreview() {
+    MaterialTheme {
+        AddToCollectionDialog(
+            collections = emptyList(),
+            wallpaperIds = setOf("preview-1"),
+            onDismiss = {},
+            onCreateCollection = {},
+            onToggleCollection = {}
+        )
+    }
 }

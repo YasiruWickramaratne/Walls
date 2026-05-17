@@ -53,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.walls.Wallpaper
@@ -63,6 +64,7 @@ import com.example.walls.ui.SearchActivity
 import com.example.walls.ui.SettingsActivity
 import com.example.walls.ui.components.WallpaperCard
 import com.example.walls.ui.dialogs.FilterDialog
+import com.example.walls.ui.preview.previewWallpapers
 import com.google.gson.Gson
 import kotlinx.coroutines.launch
 
@@ -234,6 +236,30 @@ fun MainScreen(viewModel: WallpaperViewModel) {
             viewModel = viewModel,
             useSearchFilters = false,
             onDismiss = { showFilterDialog = false }
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 393, heightDp = 852)
+@Composable
+private fun WallpaperGridPreview() {
+    MaterialTheme {
+        WallpaperGrid(
+            wallpapers = previewWallpapers(),
+            onWallpaperClick = { _, _ -> },
+            onLoadMore = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 393, heightDp = 852)
+@Composable
+private fun WallpaperGridLoadingPreview() {
+    MaterialTheme {
+        WallpaperGrid(
+            wallpapers = emptyList(),
+            onWallpaperClick = { _, _ -> },
+            onLoadMore = {}
         )
     }
 }

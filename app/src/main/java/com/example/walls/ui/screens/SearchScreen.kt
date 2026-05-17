@@ -68,6 +68,8 @@ import com.example.walls.ui.components.WallpaperCard
 import com.example.walls.ui.fullscreen.components.AddToCollectionDialog
 import com.google.gson.Gson
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.walls.ui.preview.previewWallpapers
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -368,6 +370,28 @@ fun SearchScreen(
                     Toast.LENGTH_SHORT
                 ).show()
             }
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 393, heightDp = 852)
+@Composable
+private fun SearchLoadingGridPreview() {
+    MaterialTheme {
+        SearchLoadingGrid(query = "castle")
+    }
+}
+
+@Preview(showBackground = true, widthDp = 393, heightDp = 852)
+@Composable
+private fun SearchWallpaperGridPreview() {
+    MaterialTheme {
+        SearchWallpaperGrid(
+            wallpapers = previewWallpapers(12),
+            selectedIds = setOf("preview-2", "preview-5"),
+            onWallpaperClick = { _, _ -> },
+            onWallpaperLongClick = {},
+            onLoadMore = {}
         )
     }
 }

@@ -6,6 +6,12 @@ import android.graphics.RectF
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.abs
+import org.opencv.android.Utils
+import org.opencv.core.Core
+import org.opencv.core.CvType
+import org.opencv.core.Mat
+import org.opencv.core.Size
+import org.opencv.imgproc.Imgproc
 
 class SaliencyMap(val values: FloatArray, val width: Int, val height: Int)
 
@@ -20,6 +26,11 @@ class SaliencyAnalyzer @Inject constructor() {
         val w = MAP_WIDTH
         val h = (MAP_WIDTH.toFloat() * bitmap.height / bitmap.width).toInt().coerceAtLeast(1)
         val scaled = Bitmap.createScaledBitmap(bitmap, w, h, true)
+        val openCvMap = computeOpenCvSaliencyMap(scaled)
+        if (openCvMap != null) {
+            scaled.recycle()
+            return openCvMap
+        }
 
         val pixels = IntArray(w * h)
         scaled.getPixels(pixels, 0, w, 0, 0, w, h)
@@ -46,6 +57,55 @@ class SaliencyAnalyzer @Inject constructor() {
         for (i in sal.indices) sal[i] /= maxVal
 
         return SaliencyMap(sal, w, h)
+    }
+
+    private fun computeOpenCvSaliencyMap(scaled: Bitmap): SaliencyMap? {
+        var rgba: Mat? = null
+        var gray: Mat? = null
+        var gray32: Mat? = null
+        var localAverage: Mat? = null
+        var globalAverage: Mat? = null
+        var saliency: Mat? = null
+        var normalized: Mat? = null
+        var saliency8: Mat? = null
+        return try {
+            rgba = Mat()
+            gray = Mat()
+            gray32 = Mat()
+            localAverage = Mat()
+            globalAverage = Mat()
+            saliency = Mat()
+            normalized = Mat()
+            saliency8 = Mat()
+            Utils.bitmapToMat(scaled, rgba)
+            Imgproc.cvtColor(rgba, gray, Imgproc.COLOR_RGBA2GRAY)
+            gray.convertTo(gray32, CvType.CV_32F, 1.0 / 255.0)
+
+            Imgproc.GaussianBlur(gray32, localAverage, Size(0.0, 0.0), 1.2)
+            Imgproc.GaussianBlur(gray32, globalAverage, Size(0.0, 0.0), 8.0)
+            Core.absdiff(localAverage, globalAverage, saliency)
+            Core.normalize(saliency, normalized, 0.0, 255.0, Core.NORM_MINMAX)
+            normalized.convertTo(saliency8, CvType.CV_8U)
+
+            val values = ByteArray(saliency8.total().toInt())
+            saliency8.get(0, 0, values)
+            SaliencyMap(
+                values = FloatArray(values.size) { i -> (values[i].toInt() and 0xFF) / 255f },
+                width = saliency8.cols(),
+                height = saliency8.rows()
+            )
+        } catch (_: Throwable) {
+            null
+        } finally {
+            rgba?.release()
+            gray?.release()
+            gray32?.release()
+            localAverage?.release()
+            globalAverage?.release()
+            saliency?.release()
+            normalized?.release()
+            saliency8?.release()
+        }
     }
 
     fun scoreCrop(map: SaliencyMap, cropRect: RectF): Float {

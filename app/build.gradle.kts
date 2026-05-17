@@ -75,10 +75,13 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    ksp("androidx.room:room-compiler:2.6.0")
+    implementation("androidx.room:room-runtime:2.8.3")
+    implementation("androidx.room:room-ktx:2.8.3")
+    ksp("androidx.room:room-compiler:2.8.3")
 
 
     implementation("com.google.mlkit:face-detection:16.1.7")
+    implementation("org.opencv:opencv:4.13.0")
 
     implementation("com.google.android.material:material:1.11.0")
     implementation(platform("androidx.compose:compose-bom:2024.09.00"))

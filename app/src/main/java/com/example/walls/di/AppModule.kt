@@ -1,7 +1,10 @@
 package com.example.walls.di
 
 import android.content.Context
+import androidx.room.Room
 import com.example.walls.data.local.FavoritesManager
+import com.example.walls.data.local.WallsDatabase
+import com.example.walls.data.local.analysis.WallpaperAnalysisDao
 import com.example.walls.data.repository.FavoritesRepository
 import com.example.walls.data.repository.FavoritesRepositoryImpl
 import com.example.walls.data.repository.WallpaperRepository
@@ -44,6 +47,21 @@ abstract class AppModule {
         @Singleton
         fun provideFavoritesManager(@ApplicationContext context: Context): FavoritesManager {
             return FavoritesManager(context)
+        }
+
+        @Provides
+        @Singleton
+        fun provideWallsDatabase(@ApplicationContext context: Context): WallsDatabase {
+            return Room.databaseBuilder(
+                context,
+                WallsDatabase::class.java,
+                "walls.db"
+            ).build()
+        }
+
+        @Provides
+        fun provideWallpaperAnalysisDao(database: WallsDatabase): WallpaperAnalysisDao {
+            return database.wallpaperAnalysisDao()
         }
     }
 } 

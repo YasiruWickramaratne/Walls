@@ -51,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -621,4 +622,19 @@ private fun AutoWallpaperHistoryRow(entry: AutoWallpaperHistoryEntry) {
 
 private fun formatHistoryTimestamp(timestamp: Long): String {
     return SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(timestamp))
+}
+
+@Preview(showBackground = true, widthDp = 393)
+@Composable
+private fun AutoWallpaperHistoryRowPreview() {
+    MaterialTheme {
+        AutoWallpaperHistoryRow(
+            AutoWallpaperHistoryEntry(
+                wallpaperId = "preview-1",
+                wallpaperName = "Wallpaper preview-1",
+                thumbnailUrl = "",
+                changedAtMillis = System.currentTimeMillis()
+            )
+        )
+    }
 }

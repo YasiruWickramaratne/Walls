@@ -11,11 +11,13 @@ import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.example.walls.data.analysis.SmartFitCropResolver
 import com.example.walls.data.manager.AutoWallpaperSettingsManager
 import com.example.walls.data.manager.FavoritesCollectionManager
 import com.example.walls.data.model.AutoWallpaperConfig
 import com.example.walls.data.model.AutoWallpaperHistoryEntry
 import com.example.walls.data.model.RotationSource
+import com.example.walls.data.model.WallpaperScreenTarget
 import com.example.walls.data.repository.WallpaperRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -32,7 +34,8 @@ class AutoWallpaperWorker @AssistedInject constructor(
     @Assisted workerParams: WorkerParameters,
     private val favoritesCollectionManager: FavoritesCollectionManager,
     private val wallpaperRepository: WallpaperRepository,
-    private val autoWallpaperSettingsManager: AutoWallpaperSettingsManager
+    private val autoWallpaperSettingsManager: AutoWallpaperSettingsManager,
+    private val smartFitCropResolver: SmartFitCropResolver
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -110,7 +113,12 @@ class AutoWallpaperWorker @AssistedInject constructor(
                 inputStream = connection.inputStream
                 val bitmap = BitmapFactory.decodeStream(inputStream)
                 if (bitmap != null) {
-                    val croppedBitmap = cropBitmap(context, bitmap, wallpaperId)
+                    val croppedBitmap = cropBitmap(
+                        context = context,
+                        fullBitmap = bitmap,
+                        wallpaperId = wallpaperId,
+                        screen = WallpaperScreenTarget.fromPersistedValue(screen)
+                    )
                     val applied = setWallpaperToScreen(context, croppedBitmap, screen)
                     if (applied) {
                         autoWallpaperSettingsManager.recordHistory(
@@ -134,12 +142,29 @@ class AutoWallpaperWorker @AssistedInject constructor(
         }
     }
 
-    private fun cropBitmap(context: Context, fullBitmap: Bitmap, wallpaperId: String): Bitmap {
+    private suspend fun cropBitmap(
+        context: Context,
+        fullBitmap: Bitmap,
+        wallpaperId: String,
+        screen: WallpaperScreenTarget
+    ): Bitmap {
         val sharedPref = context.getSharedPreferences("WallsPrefs", Context.MODE_PRIVATE)
 
-        // Sprint 6: SmartFitCropResolver will check CropMetadataManager here and override
-        // percentages when background analysis has produced a SMART_FIT entry. Until then,
-        // manual crop percentages from CropActivity are used as-is.
+        smartFitCropResolver.resolve(wallpaperId, fullBitmap, screen)?.let { metadata ->
+            return try {
+                val cropRect = smartFitCropResolver.toPixelRect(metadata, fullBitmap)
+                Bitmap.createBitmap(
+                    fullBitmap,
+                    cropRect.left,
+                    cropRect.top,
+                    cropRect.width(),
+                    cropRect.height()
+                )
+            } catch (e: Exception) {
+                Log.e("AutoWallpaperWorker", "Error applying Smart Fit crop", e)
+                fullBitmap
+            }
+        }
 
         // Get the relative percentages
         val leftPercent = sharedPref.getFloat("crop_rect_left_percent_$wallpaperId", 0f)

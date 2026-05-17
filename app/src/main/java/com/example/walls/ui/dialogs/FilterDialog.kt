@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.walls.WallpaperViewModel
 
@@ -252,5 +253,19 @@ private fun parseColorOrFallback(hex: String): Color {
         Color(android.graphics.Color.parseColor("#$hex"))
     } catch (_: IllegalArgumentException) {
         Color.Gray
+    }
+}
+
+@Preview(showBackground = true, widthDp = 393)
+@Composable
+private fun ResolutionGroupPreview() {
+    MaterialTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            ResolutionGroup(
+                title = "Wide",
+                resolutions = wideResolutionOptions.take(6),
+                selectedValues = mutableListOf("1920x1080", "3840x2160")
+            )
+        }
     }
 }

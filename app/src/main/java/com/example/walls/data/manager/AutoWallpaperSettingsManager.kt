@@ -11,6 +11,7 @@ import com.example.walls.data.model.AutoWallpaperHistoryEntry
 import com.example.walls.data.model.RotationSource
 import com.example.walls.data.model.WallpaperScreenTarget
 import com.example.walls.worker.AutoWallpaperWorker
+import com.example.walls.worker.WallpaperAnalysisWorker
 import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.TimeUnit
@@ -30,6 +31,7 @@ class AutoWallpaperSettingsManager @Inject constructor(
         private const val KEY_COLLECTIONS = "AUTO_WALLPAPER_COLLECTIONS"
         private const val KEY_HISTORY = "AUTO_WALLPAPER_HISTORY"
         private const val UNIQUE_WORK_NAME = "auto_wallpaper_change"
+        private const val UNIQUE_ANALYSIS_WORK_NAME = "wallpaper_analysis_precompute"
     }
 
     private val gson = Gson()
@@ -88,10 +90,24 @@ class AutoWallpaperSettingsManager @Inject constructor(
             ExistingPeriodicWorkPolicy.UPDATE,
             request
         )
+
+        val analysisRequest = PeriodicWorkRequestBuilder<WallpaperAnalysisWorker>(
+            intervalMinutes,
+            TimeUnit.MINUTES,
+            5,
+            TimeUnit.MINUTES
+        ).setConstraints(constraints).build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            UNIQUE_ANALYSIS_WORK_NAME,
+            ExistingPeriodicWorkPolicy.UPDATE,
+            analysisRequest
+        )
     }
 
     fun cancel() {
         WorkManager.getInstance(context).cancelUniqueWork(UNIQUE_WORK_NAME)
+        WorkManager.getInstance(context).cancelUniqueWork(UNIQUE_ANALYSIS_WORK_NAME)
     }
 
     fun loadLatestHistory(): AutoWallpaperHistoryEntry? {

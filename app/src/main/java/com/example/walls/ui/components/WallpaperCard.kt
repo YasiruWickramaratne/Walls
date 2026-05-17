@@ -27,7 +27,9 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.size.Size
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import com.example.walls.Wallpaper
+import com.example.walls.ui.preview.previewWallpaper
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -104,5 +106,29 @@ fun WallpaperCard(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 180, heightDp = 320)
+@Composable
+private fun WallpaperCardPreview() {
+    MaterialTheme {
+        WallpaperCard(
+            wallpaper = previewWallpaper(),
+            selected = false,
+            onClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 180, heightDp = 320)
+@Composable
+private fun WallpaperCardSelectedPreview() {
+    MaterialTheme {
+        WallpaperCard(
+            wallpaper = previewWallpaper(),
+            selected = true,
+            onClick = {}
+        )
     }
 }

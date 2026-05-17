@@ -24,9 +24,15 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.walls.data.repository.FavoriteCollection
+import com.example.walls.ui.preview.previewCollections
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,6 +79,69 @@ fun FavoritesTopBar(
             }
         }
     )
+}
+
+@Preview(showBackground = true, widthDp = 393)
+@Composable
+private fun FavoritesTopBarPreview() {
+    MaterialTheme {
+        FavoritesTopBar(
+            mode = FavoritesUiMode.BrowsingCollection("Nature"),
+            onBack = {},
+            onExitSelection = {},
+            onDeleteCollection = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 393)
+@Composable
+private fun FavoritesCollectionChipsPreview() {
+    MaterialTheme {
+        FavoritesCollectionChips(
+            collections = previewCollections(),
+            selectedCollection = "Nature",
+            onSelectDefault = {},
+            onSelectCollection = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 120, heightDp = 120)
+@Composable
+private fun FavoritesSelectionActionsPreview() {
+    MaterialTheme {
+        Box(
+            modifier = Modifier.size(120.dp),
+            contentAlignment = Alignment.BottomEnd
+        ) {
+            FavoritesSelectionActions(
+                visible = true,
+                isDefaultSelection = false,
+                onClick = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun FavoritesDialogsPreview() {
+    MaterialTheme {
+        FavoritesDialogs(
+            showBulkRemoveConfirmation = true,
+            showDeleteCollectionConfirmation = false,
+            showDeleteEmptyCollectionPrompt = false,
+            selectedCollection = null,
+            isDefaultSelection = true,
+            onDismissBulkRemove = {},
+            onConfirmBulkRemove = {},
+            onDismissDeleteCollection = {},
+            onConfirmDeleteCollection = {},
+            onDismissDeleteEmptyCollection = {},
+            onConfirmDeleteEmptyCollection = {}
+        )
+    }
 }
 
 @Composable

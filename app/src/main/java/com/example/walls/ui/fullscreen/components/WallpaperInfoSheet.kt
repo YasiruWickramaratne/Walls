@@ -25,8 +25,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.walls.api.WallpaperDetail
+import com.example.walls.ui.preview.previewWallpaperDetail
 
 @Composable
 fun WallpaperInfoSheet(
@@ -129,6 +131,34 @@ fun WallpaperInfoSheet(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 393)
+@Composable
+private fun WallpaperInfoSheetPreview() {
+    MaterialTheme {
+        WallpaperInfoSheet(
+            details = previewWallpaperDetail(),
+            isLoading = false,
+            onTagClick = {},
+            onDismiss = {},
+            modifier = Modifier.padding(16.dp)
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 393)
+@Composable
+private fun WallpaperInfoSheetLoadingPreview() {
+    MaterialTheme {
+        WallpaperInfoSheet(
+            details = null,
+            isLoading = true,
+            onTagClick = {},
+            onDismiss = {},
+            modifier = Modifier.padding(16.dp)
+        )
     }
 }
 
