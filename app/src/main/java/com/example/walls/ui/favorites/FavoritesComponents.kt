@@ -47,10 +47,10 @@ fun FavoritesTopBar(
             )
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            containerColor = MaterialTheme.colorScheme.surface,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
-            navigationIconContentColor = MaterialTheme.colorScheme.primary,
-            actionIconContentColor = MaterialTheme.colorScheme.primary
+            navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+            actionIconContentColor = MaterialTheme.colorScheme.onSurface
         ),
         navigationIcon = {
             IconButton(
@@ -92,12 +92,20 @@ fun FavoritesCollectionChips(
         FilterChip(
             selected = selectedCollection == null,
             onClick = onSelectDefault,
+            colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+            ),
             label = { Text("Default") }
         )
         collections.forEach { collection ->
             FilterChip(
                 selected = selectedCollection == collection.name,
                 onClick = { onSelectCollection(collection.name) },
+                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ),
                 label = { Text(collection.name) }
             )
         }

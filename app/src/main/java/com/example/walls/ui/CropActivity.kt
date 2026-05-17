@@ -104,8 +104,10 @@ class CropActivity : AppCompatActivity() {
 
         setContent {
             val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+            val isAmoled = themeMode == ThemeMode.AMOLED_DARK
             val isDark = when (themeMode) {
                 ThemeMode.DARK -> true
+                ThemeMode.AMOLED_DARK -> true
                 ThemeMode.LIGHT -> false
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
@@ -122,7 +124,7 @@ class CropActivity : AppCompatActivity() {
                 favoriteCollections.firstOrNull { it.name.equals(collectionName, ignoreCase = true) }
             }
 
-            WallsTheme(darkTheme = isDark) {
+            WallsTheme(darkTheme = isDark, amoledDark = isAmoled) {
                 val initialSettings = remember { smartCropSettingsManager.loadSettings() }
                 var isSmartFit by remember { mutableStateOf(initialSettings.enabled) }
                 var selectedTarget by remember { mutableStateOf(initialSettings.previewTarget) }

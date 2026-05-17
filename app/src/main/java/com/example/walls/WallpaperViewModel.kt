@@ -17,7 +17,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-enum class ThemeMode { LIGHT, DARK, SYSTEM }
+enum class ThemeMode { LIGHT, DARK, AMOLED_DARK, SYSTEM }
 
 @HiltViewModel
 class WallpaperViewModel @Inject constructor(
@@ -43,6 +43,9 @@ class WallpaperViewModel @Inject constructor(
     private val _themeMode = MutableStateFlow(ThemeMode.SYSTEM)
     val themeMode: StateFlow<ThemeMode> = _themeMode
 
+    private val _thumbnailQuality = MutableStateFlow("small")
+    val thumbnailQuality: StateFlow<String> = _thumbnailQuality
+
     private val _wallpaperDetails = MutableStateFlow<Map<String, WallpaperDetail>>(emptyMap())
     val wallpaperDetails: StateFlow<Map<String, WallpaperDetail>> = _wallpaperDetails
 
@@ -60,6 +63,15 @@ class WallpaperViewModel @Inject constructor(
         _themeMode.value = wallpaperRepository.getThemeMode()
     }
 
+    fun setThumbnailQuality(quality: String) {
+        _thumbnailQuality.value = quality
+        wallpaperRepository.saveThumbnailQuality(quality)
+    }
+
+    fun refreshThumbnailQuality() {
+        _thumbnailQuality.value = wallpaperRepository.getThumbnailQuality()
+    }
+
     fun saveApiKey(key: String) {
         wallpaperRepository.saveApiKey(key)
     }
@@ -69,6 +81,7 @@ class WallpaperViewModel @Inject constructor(
     init {
         loadFavorites()
         _themeMode.value = wallpaperRepository.getThemeMode()
+        _thumbnailQuality.value = wallpaperRepository.getThumbnailQuality()
     }
 
     fun fetchFavoriteWallpapers() {
@@ -240,39 +253,42 @@ class WallpaperViewModel @Inject constructor(
     private var currentSearchPage = 1
 
     // Cache the responses
-    private var cachedRecentWallpapers = mutableListOf<Wallpaper>()
-    private var cachedTopWallpapers = mutableListOf<Wallpaper>()
-    private var cachedSearchWallpapers = mutableListOf<Wallpaper>()
+    private var cachedRecentWallpapers = ArrayDeque<Wallpaper>()
+    private var cachedTopWallpapers = ArrayDeque<Wallpaper>()
+    private var cachedSearchWallpapers = ArrayDeque<Wallpaper>()
     private var isSearchLoading = false
     private var isReturningFromFullScreen = false
     private var lastFetchedSearchQuery = ""
 
     fun fetchWallpapers(sorting: String, isLoadingMore: Boolean = false) {
         val isRecent = sorting == "date_added"
-        
-        // Only skip if returning from FullScreen AND not applying filters
-        if (isReturningFromFullScreen && !_filterChanged.value) {
+        val isFilterFetch = _filterChanged.value
+
+        // Skip if returning from fullscreen and no filter change pending
+        if (isReturningFromFullScreen && !isFilterFetch) {
             isReturningFromFullScreen = false
             return
         }
+        isReturningFromFullScreen = false
 
-        // Reset the filter changed flag after starting the fetch
-        if (_filterChanged.value) {
+        if (isFilterFetch) {
             _filterChanged.value = false
-        }
-
-        // Don't fetch if we're just returning from FullScreenImageActivity
-        if (isReturningFromFullScreen) {
-            isReturningFromFullScreen = false
-            return
+            // Cancel any in-flight load so the filter fetch always goes through
+            if (isRecent) isRecentLoading = false else isTopLoading = false
         }
 
         // Don't fetch if already loading or no more pages
-        if ((isRecent && isRecentLoading) || (!isRecent && isTopLoading)) return
-        if ((isRecent && !hasRecentMorePages) || (!isRecent && !hasTopMorePages)) return
+        if ((isRecent && isRecentLoading) || (!isRecent && isTopLoading)) {
+            Log.d("WallpaperVM", "fetchWallpapers($sorting) skipped: already loading")
+            return
+        }
+        if ((isRecent && !hasRecentMorePages) || (!isRecent && !hasTopMorePages)) {
+            Log.d("WallpaperVM", "fetchWallpapers($sorting) skipped: no more pages")
+            return
+        }
 
         // If not loading more and we have cached data, use it
-        if (!isLoadingMore) {
+        if (!isLoadingMore && !isFilterFetch) {
             if (isRecent && cachedRecentWallpapers.isNotEmpty()) {
                 _recentWallpapers.value = cachedRecentWallpapers
                 return
@@ -285,8 +301,8 @@ class WallpaperViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 if (isRecent) isRecentLoading = true else isTopLoading = true
-                
                 val currentPage = if (isRecent) currentRecentPage else currentTopPage
+                Log.d("WallpaperVM", "fetchWallpapers($sorting) page=$currentPage isLoadingMore=$isLoadingMore")
                 
                 val response = wallpaperRepository.fetchWallpapers(
                     apiKey = wallpaperRepository.getApiKey(),
@@ -302,21 +318,19 @@ class WallpaperViewModel @Inject constructor(
 
                 // Update the appropriate list and cache
                 if (isRecent) {
-                    if (!isLoadingMore) {
-                        cachedRecentWallpapers.clear()
-                    }
+                    if (!isLoadingMore) cachedRecentWallpapers.clear()
                     cachedRecentWallpapers.addAll(response.data)
-                    _recentWallpapers.value = cachedRecentWallpapers.toList()
+                    _recentWallpapers.value = ArrayList(cachedRecentWallpapers)
                     currentRecentPage++
                     hasRecentMorePages = response.meta.current_page < response.meta.last_page
+                    Log.d("WallpaperVM", "recent: cached=${cachedRecentWallpapers.size} page=${response.meta.current_page}/${response.meta.last_page}")
                 } else {
-                    if (!isLoadingMore) {
-                        cachedTopWallpapers.clear()
-                    }
+                    if (!isLoadingMore) cachedTopWallpapers.clear()
                     cachedTopWallpapers.addAll(response.data)
-                    _topWallpapers.value = cachedTopWallpapers.toList()
+                    _topWallpapers.value = ArrayList(cachedTopWallpapers)
                     currentTopPage++
                     hasTopMorePages = response.meta.current_page < response.meta.last_page
+                    Log.d("WallpaperVM", "top: cached=${cachedTopWallpapers.size} page=${response.meta.current_page}/${response.meta.last_page}")
                 }
             } catch (e: Exception) {
                 Log.e("WallpaperViewModel", "Error fetching wallpapers", e)

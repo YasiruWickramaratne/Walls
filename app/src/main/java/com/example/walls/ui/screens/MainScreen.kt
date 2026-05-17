@@ -48,8 +48,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -74,6 +76,7 @@ fun MainScreen(viewModel: WallpaperViewModel) {
 
     val recentWallpapers by viewModel.recentWallpapers.collectAsStateWithLifecycle()
     val topWallpapers by viewModel.topWallpapers.collectAsStateWithLifecycle()
+    val thumbnailQuality by viewModel.thumbnailQuality.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(pageCount = { 2 })
 
     LaunchedEffect(Unit) {
@@ -86,7 +89,7 @@ fun MainScreen(viewModel: WallpaperViewModel) {
         drawerContent = {
             ModalDrawerSheet(
                 modifier = Modifier.width(300.dp),
-                drawerContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                drawerContainerColor = MaterialTheme.colorScheme.surface,
                 drawerContentColor = MaterialTheme.colorScheme.onSurface
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -95,9 +98,10 @@ fun MainScreen(viewModel: WallpaperViewModel) {
                     label = { Text("Home") },
                     selected = true,
                     colors = NavigationDrawerItemDefaults.colors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        unselectedContainerColor = Color.Transparent
                     ),
                     onClick = { scope.launch { drawerState.close() } }
                 )
@@ -106,8 +110,8 @@ fun MainScreen(viewModel: WallpaperViewModel) {
                     label = { Text("Favorites and Collections") },
                     selected = false,
                     colors = NavigationDrawerItemDefaults.colors(
-                        unselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedContainerColor = Color.Transparent,
+                        unselectedIconColor = MaterialTheme.colorScheme.primary,
                         unselectedTextColor = MaterialTheme.colorScheme.onSurface
                     ),
                     onClick = {
@@ -120,8 +124,8 @@ fun MainScreen(viewModel: WallpaperViewModel) {
                     label = { Text("Search") },
                     selected = false,
                     colors = NavigationDrawerItemDefaults.colors(
-                        unselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedContainerColor = Color.Transparent,
+                        unselectedIconColor = MaterialTheme.colorScheme.primary,
                         unselectedTextColor = MaterialTheme.colorScheme.onSurface
                     ),
                     onClick = {
@@ -135,8 +139,8 @@ fun MainScreen(viewModel: WallpaperViewModel) {
                     label = { Text("Settings") },
                     selected = false,
                     colors = NavigationDrawerItemDefaults.colors(
-                        unselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedContainerColor = Color.Transparent,
+                        unselectedIconColor = MaterialTheme.colorScheme.primary,
                         unselectedTextColor = MaterialTheme.colorScheme.onSurface
                     ),
                     onClick = {
@@ -153,9 +157,9 @@ fun MainScreen(viewModel: WallpaperViewModel) {
                 TopAppBar(
                     title = { Text("wallP") },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                     ),
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
@@ -217,7 +221,8 @@ fun MainScreen(viewModel: WallpaperViewModel) {
                                 putExtra("WALLPAPER_HAS_MORE", viewModel.hasMorePagesForSorting(sorting))
                             }.also { context.startActivity(it) }
                         },
-                        onLoadMore = { viewModel.fetchWallpapers(sorting, isLoadingMore = true) }
+                        onLoadMore = { viewModel.fetchWallpapers(sorting, isLoadingMore = true) },
+                        thumbnailQuality = thumbnailQuality
                     )
                 }
             }
@@ -238,6 +243,7 @@ fun WallpaperGrid(
     wallpapers: List<Wallpaper>,
     onWallpaperClick: (Wallpaper, Int) -> Unit,
     onLoadMore: () -> Unit,
+    thumbnailQuality: String = "small",
     modifier: Modifier = Modifier
 ) {
     if (wallpapers.isEmpty()) {
@@ -247,20 +253,31 @@ fun WallpaperGrid(
         return
     }
 
+    val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    LaunchedEffect(gridState, wallpapers.size) {
+        snapshotFlow {
+            gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+        }.collect { last ->
+            if (last >= wallpapers.size - 6 && wallpapers.isNotEmpty()) {
+                android.util.Log.d("WallpaperGrid", "onLoadMore triggered, wallpapers.size=${wallpapers.size}")
+                onLoadMore()
+            }
+        }
+    }
+
     LazyVerticalGrid(
+        state = gridState,
         columns = GridCells.Fixed(2),
         contentPadding = PaddingValues(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier.fillMaxSize()
     ) {
-        itemsIndexed(wallpapers) { index, wallpaper ->
-            if (index >= wallpapers.size - 5) {
-                LaunchedEffect(index) { onLoadMore() }
-            }
+        itemsIndexed(wallpapers, key = { _, wallpaper -> "${wallpaper.id}_$thumbnailQuality" }) { index, wallpaper ->
             WallpaperCard(
                 wallpaper = wallpaper,
-                onClick = { onWallpaperClick(wallpaper, index) }
+                onClick = { onWallpaperClick(wallpaper, index) },
+                thumbnailQuality = thumbnailQuality
             )
         }
     }

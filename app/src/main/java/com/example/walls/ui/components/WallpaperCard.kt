@@ -21,7 +21,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import android.graphics.Bitmap
 import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
+import coil.size.Size
+import androidx.compose.ui.platform.LocalContext
 import com.example.walls.Wallpaper
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -31,8 +36,15 @@ fun WallpaperCard(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     selected: Boolean = false,
+    thumbnailQuality: String = "small",
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val thumbUrl = when (thumbnailQuality) {
+        "large" -> wallpaper.thumbs.large
+        "original" -> wallpaper.thumbs.original
+        else -> wallpaper.thumbs.small
+    }
     Card(
         modifier = modifier
             .combinedClickable(
@@ -48,7 +60,22 @@ fun WallpaperCard(
     ) {
         androidx.compose.foundation.layout.Box {
             AsyncImage(
-                model = wallpaper.thumbs.small,
+                model = ImageRequest.Builder(context)
+                    .data(thumbUrl)
+                    .memoryCacheKey(thumbUrl)
+                    .diskCacheKey(thumbUrl)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .diskCachePolicy(CachePolicy.ENABLED)
+                    .networkCachePolicy(CachePolicy.ENABLED)
+                    .apply {
+                        if (thumbnailQuality == "small") {
+                            size(540, 960)
+                        } else {
+                            size(Size.ORIGINAL)
+                            bitmapConfig(Bitmap.Config.ARGB_8888)
+                        }
+                    }
+                    .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier

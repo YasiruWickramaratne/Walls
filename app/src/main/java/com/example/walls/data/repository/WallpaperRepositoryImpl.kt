@@ -92,6 +92,14 @@ class WallpaperRepositoryImpl @Inject constructor(
 
     override fun getThemeMode(): ThemeMode {
         val name = sharedPreferences.getString("THEME_MODE", ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name
-        return ThemeMode.valueOf(name)
+        return runCatching { ThemeMode.valueOf(name) }.getOrDefault(ThemeMode.SYSTEM)
+    }
+
+    override fun saveThumbnailQuality(quality: String) {
+        sharedPreferences.edit().putString("THUMBNAIL_QUALITY", quality).apply()
+    }
+
+    override fun getThumbnailQuality(): String {
+        return sharedPreferences.getString("THUMBNAIL_QUALITY", "small") ?: "small"
     }
 }

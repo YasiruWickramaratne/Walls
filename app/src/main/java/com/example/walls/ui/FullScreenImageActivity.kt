@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -135,12 +136,14 @@ class FullScreenImageActivity : AppCompatActivity() {
 
         setContent {
             val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+            val isAmoled = themeMode == ThemeMode.AMOLED_DARK
             val isDark = when (themeMode) {
                 ThemeMode.DARK -> true
+                ThemeMode.AMOLED_DARK -> true
                 ThemeMode.LIGHT -> false
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
-            WallsTheme(darkTheme = isDark) {
+            WallsTheme(darkTheme = isDark, amoledDark = isAmoled) {
                 FullScreenImageScreen(
                     sorting = sorting,
                     searchQuery = searchQuery,
@@ -356,7 +359,7 @@ private fun FullScreenImageScreen(
                     onDismissRequest = { isInfoSheetVisible = false },
                     sheetState = infoSheetState,
                     containerColor = Color.Transparent,
-                    scrimColor = Color.Black.copy(alpha = 0.18f),
+                    scrimColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.18f),
                     tonalElevation = 0.dp,
                     dragHandle = null
                 ) {
@@ -385,7 +388,9 @@ private fun FullScreenImageScreen(
                         val activity = context as? AppCompatActivity
                         activity?.onBackPressedDispatcher?.onBackPressed()
                     },
-                    modifier = Modifier.padding(start = 16.dp, top = 16.dp)
+                    modifier = Modifier.padding(start = 16.dp, top = 16.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -406,7 +411,10 @@ private fun FullScreenImageScreen(
                     horizontalAlignment = androidx.compose.ui.Alignment.End
                 ) {
                     FloatingActionButton(
-                        onClick = { viewModel.toggleFavorite(currentWallpaper.id) }
+                        onClick = { viewModel.toggleFavorite(currentWallpaper.id) },
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation()
                     ) {
                         Icon(
                             imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
@@ -414,7 +422,10 @@ private fun FullScreenImageScreen(
                         )
                     }
                     FloatingActionButton(
-                        onClick = { isInfoSheetVisible = true }
+                        onClick = { isInfoSheetVisible = true },
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation()
                     ) {
                         Icon(
                             imageVector = Icons.Default.Info,

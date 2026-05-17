@@ -2,6 +2,7 @@ package com.example.walls.ui.theme
 
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
@@ -14,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
@@ -25,6 +27,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 @Composable
 fun WallsTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    amoledDark: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -58,12 +61,29 @@ fun WallsTheme(
         }
     }
     val systemSeedColor = remember(systemPaletteKey) { extractSystemSeedColor(systemPaletteKey) }
-    val colorScheme = if (supportsDynamicColor && systemSeedColor != null) {
-        baseColorScheme.seededForWallP(systemSeedColor, darkTheme)
-    } else if (supportsDynamicColor) {
-        baseColorScheme
-    } else {
-        baseColorScheme.accentedForWallP(darkTheme)
+    val colorSchemeBase = remember(baseColorScheme, systemSeedColor, darkTheme) {
+        if (supportsDynamicColor && systemSeedColor != null) {
+            baseColorScheme.seededForWallP(systemSeedColor, darkTheme)
+        } else if (supportsDynamicColor) {
+            baseColorScheme
+        } else {
+            baseColorScheme.accentedForWallP(darkTheme)
+        }
+    }
+    val colorScheme = remember(colorSchemeBase, amoledDark) {
+        colorSchemeBase.amoledAdjusted(amoledDark)
+    }
+
+    DisposableEffect(darkTheme, amoledDark, colorScheme) {
+        Log.d(
+            "WallsTheme",
+            "darkTheme=$darkTheme amoledDark=$amoledDark " +
+                "background=#${colorScheme.background.toArgb().toUInt().toString(16)} " +
+                "surface=#${colorScheme.surface.toArgb().toUInt().toString(16)} " +
+                "surfaceTint=#${colorScheme.surfaceTint.toArgb().toUInt().toString(16)} " +
+                "primary=#${colorScheme.primary.toArgb().toUInt().toString(16)}"
+        )
+        onDispose { }
     }
 
     MaterialTheme(
@@ -144,4 +164,40 @@ private fun extractSystemSeedColor(systemPaletteKey: String): Color? {
 
 private fun Color.bestContentColor(): Color {
     return if (luminance() > 0.5f) Color(0xFF111111) else Color.White
+}
+
+private fun ColorScheme.amoledAdjusted(enabled: Boolean): ColorScheme {
+    if (!enabled) return this
+
+    val black = Color.Black
+    val primaryRaised = primary.copy(alpha = 0.22f).compositeOver(black)
+    val secondaryRaised = secondary.copy(alpha = 0.18f).compositeOver(black)
+    val tertiaryRaised = tertiary.copy(alpha = 0.18f).compositeOver(black)
+
+    return copy(
+        background = black,
+        surface = black,
+        surfaceVariant = black,
+        surfaceBright = black,
+        surfaceDim = black,
+        surfaceContainerLowest = black,
+        surfaceContainerLow = black,
+        primaryContainer = primaryRaised,
+        onPrimaryContainer = Color.White,
+        secondaryContainer = secondaryRaised,
+        onSecondaryContainer = Color.White,
+        tertiaryContainer = tertiaryRaised,
+        onTertiaryContainer = Color.White,
+        surfaceContainer = black,
+        surfaceContainerHigh = black,
+        surfaceContainerHighest = black,
+        inverseSurface = Color(0xFFF2F2F2),
+        onBackground = Color.White,
+        onSurface = Color.White,
+        onSurfaceVariant = Color(0xFFD0D0D0),
+        outline = primary.copy(alpha = 0.48f),
+        outlineVariant = primary.copy(alpha = 0.28f),
+        scrim = black,
+        surfaceTint = Color.Transparent
+    )
 }

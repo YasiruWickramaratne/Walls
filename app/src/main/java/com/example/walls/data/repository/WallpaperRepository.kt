@@ -33,6 +33,8 @@ interface WallpaperRepository {
     fun getFilterSettings(): SavedFilterSettings
     fun saveThemeMode(modeName: String)
     fun getThemeMode(): com.example.walls.ThemeMode
+    fun saveThumbnailQuality(quality: String)
+    fun getThumbnailQuality(): String
 }
 
 data class SavedFilterSettings(

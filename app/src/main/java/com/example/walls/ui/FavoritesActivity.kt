@@ -22,12 +22,14 @@ class FavoritesActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+            val isAmoled = themeMode == ThemeMode.AMOLED_DARK
             val isDark = when (themeMode) {
                 ThemeMode.DARK -> true
+                ThemeMode.AMOLED_DARK -> true
                 ThemeMode.LIGHT -> false
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
-            WallsTheme(darkTheme = isDark) {
+            WallsTheme(darkTheme = isDark, amoledDark = isAmoled) {
                 FavoritesScreen(
                     viewModel = viewModel,
                     onBack = { finish() }

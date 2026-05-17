@@ -89,25 +89,30 @@ fun FilterDialog(
             ) {
                 Text("Categories")
                 Spacer(modifier = Modifier.height(8.dp))
+                val chipColors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer
+                )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = general, onClick = { general = !general }, label = { Text("General") }, shape = RoundedCornerShape(16.dp))
-                    FilterChip(selected = anime, onClick = { anime = !anime }, label = { Text("Anime") }, shape = RoundedCornerShape(16.dp))
-                    FilterChip(selected = people, onClick = { people = !people }, label = { Text("People") }, shape = RoundedCornerShape(16.dp))
+                    FilterChip(selected = general, onClick = { general = !general }, label = { Text("General") }, shape = RoundedCornerShape(16.dp), colors = chipColors)
+                    FilterChip(selected = anime, onClick = { anime = !anime }, label = { Text("Anime") }, shape = RoundedCornerShape(16.dp), colors = chipColors)
+                    FilterChip(selected = people, onClick = { people = !people }, label = { Text("People") }, shape = RoundedCornerShape(16.dp), colors = chipColors)
                 }
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 Text("Purity")
                 Spacer(modifier = Modifier.height(8.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = sfw, onClick = { sfw = !sfw }, label = { Text("SFW") }, shape = RoundedCornerShape(16.dp))
-                    FilterChip(selected = sketchy, onClick = { sketchy = !sketchy }, label = { Text("Sketchy") }, shape = RoundedCornerShape(16.dp))
-                    FilterChip(selected = nsfw, onClick = { nsfw = !nsfw }, label = { Text("NSFW") }, shape = RoundedCornerShape(16.dp))
+                    FilterChip(selected = sfw, onClick = { sfw = !sfw }, label = { Text("SFW") }, shape = RoundedCornerShape(16.dp), colors = chipColors)
+                    FilterChip(selected = sketchy, onClick = { sketchy = !sketchy }, label = { Text("Sketchy") }, shape = RoundedCornerShape(16.dp), colors = chipColors)
+                    FilterChip(selected = nsfw, onClick = { nsfw = !nsfw }, label = { Text("NSFW") }, shape = RoundedCornerShape(16.dp), colors = chipColors)
                 }
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 Text("Resolution")
                 Spacer(modifier = Modifier.height(8.dp))
-                FilterChip(selected = selectedResolutions.isEmpty(), onClick = { selectedResolutions.clear() }, label = { Text("Any") }, shape = RoundedCornerShape(16.dp))
+                FilterChip(selected = selectedResolutions.isEmpty(), onClick = { selectedResolutions.clear() }, label = { Text("Any") }, shape = RoundedCornerShape(16.dp), colors = chipColors)
                 Spacer(modifier = Modifier.height(12.dp))
                 ResolutionGroup(title = "Wide", resolutions = wideResolutionOptions, selectedValues = selectedResolutions)
                 if (portraitResolutionOptions.isNotEmpty()) {
@@ -123,7 +128,7 @@ fun FilterDialog(
                 Text("Ratio")
                 Spacer(modifier = Modifier.height(8.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = selectedRatios.isEmpty(), onClick = { selectedRatios.clear() }, label = { Text("Any") }, shape = RoundedCornerShape(16.dp))
+                    FilterChip(selected = selectedRatios.isEmpty(), onClick = { selectedRatios.clear() }, label = { Text("Any") }, shape = RoundedCornerShape(16.dp), colors = chipColors)
                     ratioOptions.filterNot { it == "Any" }.forEach { ratio ->
                         FilterChip(
                             selected = selectedRatios.contains(ratio),
@@ -131,7 +136,8 @@ fun FilterDialog(
                                 if (selectedRatios.contains(ratio)) selectedRatios.remove(ratio) else selectedRatios.add(ratio)
                             },
                             label = { Text(ratio) },
-                            shape = RoundedCornerShape(16.dp)
+                            shape = RoundedCornerShape(16.dp),
+                            colors = chipColors
                         )
                     }
                 }
@@ -140,7 +146,7 @@ fun FilterDialog(
                 Text("Color")
                 Spacer(modifier = Modifier.height(8.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    FilterChip(selected = selectedColors.isEmpty(), onClick = { selectedColors.clear() }, label = { Text("Any") }, shape = RoundedCornerShape(16.dp))
+                    FilterChip(selected = selectedColors.isEmpty(), onClick = { selectedColors.clear() }, label = { Text("Any") }, shape = RoundedCornerShape(16.dp), colors = chipColors)
                     colorOptions.forEach { hex ->
                         val swatchColor = parseColorOrFallback(hex)
                         Box(
@@ -230,7 +236,12 @@ private fun ResolutionGroup(
                     if (selectedValues.contains(resolution)) selectedValues.remove(resolution) else selectedValues.add(resolution)
                 },
                 label = { Text(resolution) },
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(16.dp),
+                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer
+                )
             )
         }
     }

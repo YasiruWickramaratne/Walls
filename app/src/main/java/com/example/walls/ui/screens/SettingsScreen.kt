@@ -30,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -44,6 +45,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,8 +85,24 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val textFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedContainerColor = MaterialTheme.colorScheme.surface,
+        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        focusedBorderColor = MaterialTheme.colorScheme.primary,
+        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+        disabledBorderColor = MaterialTheme.colorScheme.outlineVariant,
+        focusedLabelColor = MaterialTheme.colorScheme.primary,
+        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+        cursorColor = MaterialTheme.colorScheme.primary,
+        focusedTrailingIconColor = MaterialTheme.colorScheme.primary,
+        unfocusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val thumbnailQuality by viewModel.thumbnailQuality.collectAsStateWithLifecycle()
     val favoriteCollections by viewModel.favoriteCollections.collectAsStateWithLifecycle()
     val initialConfig = remember(autoWallpaperSettingsManager) { autoWallpaperSettingsManager.loadConfig() }
     val latestHistoryEntry = remember(autoWallpaperSettingsManager) { autoWallpaperSettingsManager.loadLatestHistory() }
@@ -155,9 +173,9 @@ fun SettingsScreen(
             TopAppBar(
                 title = { Text("Settings") },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                 ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -178,8 +196,8 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Text("Theme", style = MaterialTheme.typography.bodyMedium)
             Spacer(modifier = Modifier.height(8.dp))
-            val themeModes = listOf(ThemeMode.LIGHT, ThemeMode.DARK, ThemeMode.SYSTEM)
-            val themeLabels = listOf("Light", "Dark", "System")
+            val themeModes = listOf(ThemeMode.LIGHT, ThemeMode.DARK, ThemeMode.AMOLED_DARK, ThemeMode.SYSTEM)
+            val themeLabels = listOf("Light", "Dark", "AMOLED", "System")
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 themeModes.forEachIndexed { index, mode ->
                     SegmentedButton(
@@ -187,12 +205,34 @@ fun SettingsScreen(
                         onClick = { viewModel.setThemeMode(mode) },
                         shape = SegmentedButtonDefaults.itemShape(index, themeModes.size),
                         colors = SegmentedButtonDefaults.colors(
-                            activeContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            activeContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            activeContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            activeContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                             inactiveContainerColor = MaterialTheme.colorScheme.surface,
                             inactiveContentColor = MaterialTheme.colorScheme.onSurface
                         ),
                         label = { Text(themeLabels[index]) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Grid thumbnail quality", style = MaterialTheme.typography.bodyMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            val qualityOptions = listOf("small", "large", "original")
+            val qualityLabels = listOf("Low", "Medium", "High")
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                qualityOptions.forEachIndexed { index, quality ->
+                    SegmentedButton(
+                        selected = thumbnailQuality == quality,
+                        onClick = { viewModel.setThumbnailQuality(quality) },
+                        shape = SegmentedButtonDefaults.itemShape(index, qualityOptions.size),
+                        colors = SegmentedButtonDefaults.colors(
+                            activeContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            activeContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            inactiveContainerColor = MaterialTheme.colorScheme.surface,
+                            inactiveContentColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        label = { Text(qualityLabels[index]) }
                     )
                 }
             }
@@ -211,7 +251,8 @@ fun SettingsScreen(
                 },
                 label = { Text("Wallhaven API Key") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                colors = textFieldColors
             )
             Spacer(modifier = Modifier.height(8.dp))
             Button(
@@ -271,7 +312,8 @@ fun SettingsScreen(
                     readOnly = true,
                     label = { Text("Change Interval") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = intervalDropdownExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                    colors = textFieldColors
                 )
                 ExposedDropdownMenu(
                     expanded = intervalDropdownExpanded,
@@ -302,7 +344,8 @@ fun SettingsScreen(
                     readOnly = true,
                     label = { Text("Smart auto-rotation") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rotationSourceDropdownExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                    colors = textFieldColors
                 )
                 ExposedDropdownMenu(
                     expanded = rotationSourceDropdownExpanded,
@@ -379,7 +422,8 @@ fun SettingsScreen(
                     readOnly = true,
                     label = { Text("Wallpaper Screen") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = screenDropdownExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                    colors = textFieldColors
                 )
                 ExposedDropdownMenu(
                     expanded = screenDropdownExpanded,
@@ -506,7 +550,8 @@ fun SettingsScreen(
                         readOnly = true,
                         label = { Text(collection.name) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                        colors = textFieldColors
                     )
                     ExposedDropdownMenu(
                         expanded = expanded,
